@@ -3,76 +3,150 @@
 
 @defining(play.core.PlayVersion.current) { version =>
 
-<html>
+    <html>
 
-<title>Reply Tweets Deck.GL</title>
-<meta name='viewport' />
+        <title>Reply Tweets Deck.GL</title>
+        <meta name='viewport'/>
 
-<style type="text/css">
-#container {
-  width: 100%;
-  height: 100%;
-  }
-#search{
-left:500px;
-top:0px;
-position:absolute;
-}
-</style>
+        <style type="text/css">
+                #container {
+                    width: 100%;
+                    height: 100%;
+                }
 
-<body>
-<div id="map" style="width:100vw; height: 100vh"></div>
-<div id = "search">
-    <p id="content">Reply Tweets Dataset</p>
-    <input type="text" class="div" id="query"
-           placeholder="Search number of nodes, range from 1-10000, e.g.500. The default value is 5.">
-    <button onclick="drawGraph()">submit</button>
-</div>
-</body>
+                #search {
+                    left: 500px;
+                    top: 0px;
+                    position: absolute;
+                }
+        </style>
+
+        <body>
+
+            <div id="map" style="width:100vw; height: 100vh"></div>
+            <div id="search">
+                <p id="content">Reply Tweets Dataset</p>
+                <input type="text" class="div" id="query"
+                placeholder="Search number of nodes, range from 1-10000, e.g.500. The default value is 5.">
+                <button onclick="svgGraph()">svg</button>
+                <button onclick="drawGraph()">new submit</button>
+                <button onclick="oldDrawGraph()">submit</button>
+            </div>
+            <div id="svg"></div>
+
+        </body>
 
 
+        <script src="/assets/javascripts/deckgl.min.js"></script>
+        <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.50.0/mapbox-gl.js'></script>
+        <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.50.0/mapbox-gl.css' rel='stylesheet'/>
+        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+        <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+        <script type="text/javascript" src="/assets/javascripts/d3-ForceEdgeBundling.js"></script>
 
-<script src="/assets/javascripts/deckgl.min.js"></script>
-<script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.50.0/mapbox-gl.js'></script>
-<link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.50.0/mapbox-gl.css' rel='stylesheet' />
-<script>
-mapboxgl.accessToken = 'pk.eyJ1IjoiamVyZW15bGkiLCJhIjoiY2lrZ2U4MWI4MDA4bHVjajc1am1weTM2aSJ9.JHiBmawEKGsn3jiRK_d0Gw';
-const map = new mapboxgl.Map({
-      container: 'map',
-      style: 'mapbox://styles/mapbox/light-v9',
-      center: [-96.35,39.5],
-      zoom: 3.7
-    });
-;
-function drawGraph(){
-  if(map.getLayer('arc')!=undefined){
-     map.removeLayer('arc')
-  }
+        <script>
 
-  query = document.getElementById("query").value;
+                mapboxgl.accessToken = 'pk.eyJ1IjoiamVyZW15bGkiLCJhIjoiY2lrZ2U4MWI4MDA4bHVjajc1am1weTM2aSJ9.JHiBmawEKGsn3jiRK_d0Gw';
 
-  var request = new XMLHttpRequest();
-  request.open('GET', 'http://localhost:9000/replies?query='+query, false);//for async
-  request.send(null);
-  if (request.status === 200) {
-     var data = JSON.parse(request.responseText);
-     const myArcLayer = new MapboxLayer({
-        id: 'arc',
-		type: ArcLayer,
-        pickable: true,
-        data: data,
-        getSourcePosition: d => d.source,
-        getTargetPosition: d => d.target,
-        getSourceColor: [12, 44, 132],
-        getTargetColor: [177, 0, 38],
-        gettrokeWidth: 3
-      });
+                const map = new mapboxgl.Map({
+                    container: 'map',
+                    style: 'mapbox://styles/mapbox/light-v9',
+                    center: [-96.35, 39.5],
+                    zoom: 3.7
+                });
 
-    map.addLayer(myArcLayer);
-}
-}
-</script>
+                function formatData(data) {
+                    var node_data = {};
+                    var edge_data = [];
+                    for (let i = 0; i < data.length; i++) {
+                        if (((data[i].source[0] - data[i].target[0]) ** 2 + (data[i].source[1] - data[i].target[1]) ** 2) ** 0.5 <= 1) continue;
+                        node_data[2 * i + ""] = {"x": data[i].source[0], "y": data[i].source[1]};
+                        node_data[2 * i + 1 + ""] = {"x": data[i].target[0], "y": data[i].target[1]};
+                        edge_data.push({"source": 2 * i + "", "target": 2 * i + 1 + ""});
+                    }
+                    return {"node_data": node_data, "edge_data": edge_data};
+                }
 
-</html>
+                function removeLayer() {
+                    if (map.getLayer('path') !== undefined) {
+                        map.removeLayer('path')
+                    }
+                    if (map.getLayer('arc') !== undefined) {
+                        map.removeLayer('arc');
+                    }
+                }
+
+                function drawGraph() {
+                    removeLayer();
+                    query = document.getElementById("query").value;
+
+                    const request = new XMLHttpRequest();
+                    request.open('GET', 'http://localhost:9000/replies?query=' + query, false);//for async
+                    request.send(null);
+                    if (request.status === 200) {
+                        let data = JSON.parse(request.responseText);
+                        data = formatData(data);
+                        const edge_data = data.edge_data;
+                        const node_data = data.node_data;
+                        const fbundling = d3.ForceEdgeBundling()
+                                .step_size(0.2)
+                                .compatibility_threshold(0.01)
+                                .nodes(node_data)
+                                .edges(edge_data);
+                        const results = fbundling();
+
+                        let res = [];
+
+                        for (let i = 0; i < results.length; i++) {
+                            res[i] = {};
+                            var path = [];
+                            for (let j = 0; j < results[i].length; j++) {
+                                path.push([results[i][j]["x"], results[i][j]["y"]]);
+                            }
+                            res[i]["path"] = path;
+                        }
+
+                        const layer = new MapboxLayer({
+                            id: "path",
+                            type: PathLayer,
+                            data: res,
+                            pickable: true,
+                            widthScale: 1,
+                            widthMinPixels: 1,
+                            getPath: d => d.path,
+                                getWidth: 1,
+                                getColor: [177, 0, 38],
+                                getStrokeWidth: 1
+                    });
+
+                        map.addLayer(layer);
+                    }
+                }
+
+                function oldDrawGraph() {
+                    removeLayer();
+                    query = document.getElementById("query").value;
+                    var request = new XMLHttpRequest();
+                    request.open('GET', 'http://localhost:9000/replies?query=' + query, false);//for async
+                    request.send(null);
+                    if (request.status === 200) {
+                        var data = JSON.parse(request.responseText);
+                        const myArcLayer = new MapboxLayer({
+                            id: 'arc',
+                            type: ArcLayer,
+                            pickable: true,
+                            data: data,
+                            getSourcePosition: d => d.source,
+                                getTargetPosition: d => d.target,
+                                getSourceColor: [12, 44, 132],
+                                getTargetColor: [177, 0, 38],
+                                gettrokeWidth: 3
+                    });
+                        map.addLayer(myArcLayer);
+                    }
+                }
+        </script>
+
+    </html>
 
 }

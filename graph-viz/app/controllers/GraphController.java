@@ -1,17 +1,15 @@
 package controllers;
 
-import play.mvc.*;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import play.libs.Json;
+import play.mvc.Controller;
+import play.mvc.Result;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
-
-import play.libs.Json;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * This controller contains an action to handle HTTP requests
@@ -36,6 +34,7 @@ public class GraphController extends Controller {
                     .getConnection("jdbc:postgresql://localhost:5432/graphtweet",
                             "graphuser", "graphuser");
             Statement statement = conn.createStatement();
+
             ResultSet resultSet = statement.executeQuery("select " +
                     "from_longitude, from_latitude, " +
                     "to_longitude, to_latitude " +
@@ -44,6 +43,7 @@ public class GraphController extends Controller {
                     "@@ to_tsquery('"+query+"') or " +
                     "to_tsvector('english', to_text) " +
                     "@@ to_tsquery('"+query+"');");
+
             while (resultSet.next()) {
                 ObjectNode reply = Json.newObject();
                 ArrayNode fromCoordinate = Json.newArray();
@@ -56,6 +56,7 @@ public class GraphController extends Controller {
                 reply.set("target", toCoordinate);
                 replies.add(reply);
             }
+
             resultSet.close();
             statement.close();
             conn.close();
