@@ -276,7 +276,7 @@ public class ForceBundling {
             for(int iteration = 0; iteration < I; iteration++) {
                 ArrayList<ArrayList<Vector>> forces = new ArrayList<>();
                 for(int edge = 0; edge < dataEdges.size(); edge++){
-                    forces.set(edge, applyResultingForcesOnSubdivisionPoints(edge, P, S));
+                    forces.add(applyResultingForcesOnSubdivisionPoints(edge, P, S));
                 }
                 for(int e = 0; e < dataEdges.size(); e++){
                     for(int i=0;i<P+1;i++) {
@@ -292,7 +292,5 @@ public class ForceBundling {
         }
         return subdivisionPoints;
     }
-    
-    // TODO: setters and getters
 
 }
