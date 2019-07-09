@@ -28,6 +28,7 @@
                 <p id="content">Reply Tweets Dataset</p>
                 <input type="text" class="div" id="query"
                 placeholder="Search number of nodes, range from 1-10000, e.g.500. The default value is 5.">
+                <button onclick="newGraph()">graph submit</button>
                 <button onclick="drawGraph()">new submit</button>
                 <button onclick="oldDrawGraph()">submit</button>
             </div>
@@ -72,6 +73,9 @@
                     }
                     if (map.getLayer('arc') !== undefined) {
                         map.removeLayer('arc');
+                    }
+                    if(map.getLayer('newpath') !== undefined) {
+                        map.removeLayer('newpath');
                     }
                 }
 
@@ -140,8 +144,33 @@
                                 getSourceColor: [12, 44, 132],
                                 getTargetColor: [177, 0, 38],
                                 gettrokeWidth: 3
-                    });
+                        });
                         map.addLayer(myArcLayer);
+                    }
+                }
+
+                function newGraph() {
+                    removeLayer();
+                    query = document.getElementById("query").value;
+                    var request = new XMLHttpRequest();
+                    request.open('GET', 'http://localhost:9000/replies?query=' + query, false);//for async
+                    request.send(null);
+                    if (request.status === 200) {
+                        var data = JSON.parse(request.responseText);
+                        console.log(data);
+                        const layer = new MapboxLayer({
+                            id: "newpath",
+                            type: PathLayer,
+                            data: data,
+                            pickable: true,
+                            widthScale: 1,
+                            widthMinPixels: 1,
+                            getPath: d => d.path,
+                            getWidth: 1,
+                            getColor: [177, 0, 38],
+                            getStrokeWidth: 1
+                    });
+                        map.addLayer(layer);
                     }
                 }
         </script>

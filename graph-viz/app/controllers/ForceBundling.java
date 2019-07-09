@@ -2,10 +2,16 @@ package controllers;
 
 import java.util.ArrayList;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import play.libs.Json;
+import play.mvc.Controller;
+import play.mvc.Result;
 
 class Edge {
     int sourceNodeInd;
     int targetNodeInd;
+
     Edge(int sourceNodeInd, int targetNodeInd) {
         this.sourceNodeInd = sourceNodeInd;
         this.targetNodeInd = targetNodeInd;
@@ -259,9 +265,9 @@ public class ForceBundling {
     }
 
     void computeCompatibilityLists() {
-        for (int e = 0; e < dataEdges.size() -1 ; e++) {
-            for(int oe = e + 1; oe < dataEdges.size(); oe++){
-                if(areCompatible(dataEdges.get(e), dataEdges.get(oe))){
+        for (int e = 0; e < dataEdges.size() - 1; e++) {
+            for (int oe = e + 1; oe < dataEdges.size(); oe++) {
+                if (areCompatible(dataEdges.get(e), dataEdges.get(oe))) {
                     compatibilityList.get(e).add(oe);
                     compatibilityList.get(oe).add(e);
                 }
@@ -277,14 +283,14 @@ public class ForceBundling {
         initializeCompatibilityLists();
         updateEdgeDivisions(P);
         computeCompatibilityLists();
-        for(int cycle = 0; cycle < C; cycle ++) {
-            for(int iteration = 0; iteration < I; iteration++) {
+        for (int cycle = 0; cycle < C; cycle++) {
+            for (int iteration = 0; iteration < I; iteration++) {
                 ArrayList<ArrayList<Vector>> forces = new ArrayList<>();
-                for(int edge = 0; edge < dataEdges.size(); edge++){
+                for (int edge = 0; edge < dataEdges.size(); edge++) {
                     forces.add(applyResultingForcesOnSubdivisionPoints(edge, P, S));
                 }
-                for(int e = 0; e < dataEdges.size(); e++){
-                    for(int i=0;i<P+1;i++) {
+                for (int e = 0; e < dataEdges.size(); e++) {
+                    for (int i = 0; i < P + 1; i++) {
                         subdivisionPoints.get(e).alv.get(i).x += forces.get(e).get(i).x;
                         subdivisionPoints.get(e).alv.get(i).y += forces.get(e).get(i).y;
                     }
@@ -298,7 +304,7 @@ public class ForceBundling {
         return subdivisionPoints;
     }
 
-
+/*
     public static void main(String[] args) {
         ArrayList<Vector> dataNodes = new ArrayList<>();
         Vector node1 = new Vector(1, 2);
@@ -321,4 +327,5 @@ public class ForceBundling {
             System.out.println();
         }
     }
+*/
 }
