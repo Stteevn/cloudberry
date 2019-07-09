@@ -34,10 +34,10 @@ class Path {
 
 public class ForceBundling {
 
-    static ArrayList<Node> aln = new ArrayList<>();
-    static ArrayList<Edge> ale = new ArrayList<>();
-    static ArrayList<Path> subdivision = new ArrayList<>();
-    static ArrayList<ArrayList<Edge>> compatibility = new ArrayList<>();
+    static ArrayList<Node> dataNodes = new ArrayList<>();
+    static ArrayList<Edge> dataEdges = new ArrayList<>();
+    static ArrayList<Path> subdivisionPoints = new ArrayList<>();
+    static ArrayList<ArrayList<Integer>> compatibilityList = new ArrayList<>();
     final static double K = 0.1;
     final static double S_initial = 0.1;
     final static double P_initial = 1;
@@ -53,26 +53,26 @@ public class ForceBundling {
     }
 
     Vector edgeAsVector(Edge e) {
-        return new Vector(aln.get(e.targetNodeInd).x - aln.get(e.sourceNodeInd).x, aln.get(e.targetNodeInd).y - aln.get(e.sourceNodeInd).y);
+        return new Vector(dataNodes.get(e.targetNodeInd).x - dataNodes.get(e.sourceNodeInd).x, dataNodes.get(e.targetNodeInd).y - dataNodes.get(e.sourceNodeInd).y);
     }
 
     double edgeLength(Edge e) {
-        if (Math.abs(aln.get(e.sourceNodeInd).x - aln.get(e.targetNodeInd).x) < eps &&
-                Math.abs(aln.get(e.sourceNodeInd).y - aln.get(e.targetNodeInd).y) < eps) {
+        if (Math.abs(dataNodes.get(e.sourceNodeInd).x - dataNodes.get(e.targetNodeInd).x) < eps &&
+                Math.abs(dataNodes.get(e.sourceNodeInd).y - dataNodes.get(e.targetNodeInd).y) < eps) {
             return eps;
         }
-        return Math.sqrt(Math.pow(aln.get(e.sourceNodeInd).x - aln.get(e.targetNodeInd).x, 2) +
-                Math.pow(aln.get(e.sourceNodeInd).y - aln.get(e.targetNodeInd).y, 2));
+        return Math.sqrt(Math.pow(dataNodes.get(e.sourceNodeInd).x - dataNodes.get(e.targetNodeInd).x, 2) +
+                Math.pow(dataNodes.get(e.sourceNodeInd).y - dataNodes.get(e.targetNodeInd).y, 2));
     }
 
     // v1 for source, v2 for target
-    double customEdgeLength(Vector v1, Vector v2) {
+    double customEdgeLength(Node v1, Node v2) {
         return Math.sqrt(Math.pow(v1.x - v2.x, 2) + Math.pow(v1.y - v2.y, 2));
     }
 
     Vector edgeMidPoint(Edge e) {
-        double midX = (aln.get(e.sourceNodeInd).x + aln.get(e.targetNodeInd).x) / 2.0;
-        double midY = (aln.get(e.sourceNodeInd).y + aln.get(e.targetNodeInd).y) / 2.0;
+        double midX = (dataNodes.get(e.sourceNodeInd).x + dataNodes.get(e.targetNodeInd).x) / 2.0;
+        double midY = (dataNodes.get(e.sourceNodeInd).y + dataNodes.get(e.targetNodeInd).y) / 2.0;
         return new Vector(midX, midY);
     }
 
@@ -82,8 +82,8 @@ public class ForceBundling {
 
     double computeDividedEdgeLength(int e_ind) {
         double length = 0;
-        for (int i = 1; i < subdivision.get(e_ind).alv.size(); i++) {
-            double segmentLength = euclideanDistance(subdivision.get(e_ind).alv.get(i), subdivision.get(e_ind).alv.get(i - 1));
+        for (int i = 1; i < subdivisionPoints.get(e_ind).alv.size(); i++) {
+            double segmentLength = euclideanDistance(subdivisionPoints.get(e_ind).alv.get(i), subdivisionPoints.get(e_ind).alv.get(i - 1));
             length += segmentLength;
         }
         return length;
@@ -99,33 +99,77 @@ public class ForceBundling {
     }
 
     void initializeEdgeSubdivisions() {
-        for (int i = 0; i < ale.size(); i++) {
+        for (int i = 0; i < dataEdges.size(); i++) {
             if (P_initial == 1) {
-                subdivision.add(new Path());
+                subdivisionPoints.add(new Path());
             } else {
-                subdivision.add(new Path());
-                subdivision.get(i).alv.add(aln.get(ale.get(i).sourceNodeInd));
-                subdivision.get(i).alv.add(aln.get(ale.get(i).targetNodeInd));
+                subdivisionPoints.add(new Path());
+                subdivisionPoints.get(i).alv.add(dataNodes.get(dataEdges.get(i).sourceNodeInd));
+                subdivisionPoints.get(i).alv.add(dataNodes.get(dataEdges.get(i).targetNodeInd));
             }
         }
     }
 
     void initializeCompatibilityLists() {
-        for (int i = 0; i < ale.size(); i++) {
-            compatibility.add(new ArrayList<Edge>());
+        for (int i = 0; i < dataEdges.size(); i++) {
+            compatibilityList.add(new ArrayList<>());
         }
     }
 
     ArrayList<Edge> filterSelfLoops(ArrayList<Edge> edgeList) {
         ArrayList<Edge> filteredEdgeList = new ArrayList<>();
         for (int i = 0; i < edgeList.size(); i++) {
-            if (aln.get(edgeList.get(i).sourceNodeInd).x != aln.get(edgeList.get(i).targetNodeInd).x ||
-                    aln.get(edgeList.get(i).sourceNodeInd).y != aln.get(edgeList.get(i).targetNodeInd).y) {
+            if (dataNodes.get(edgeList.get(i).sourceNodeInd).x != dataNodes.get(edgeList.get(i).targetNodeInd).x ||
+                    dataNodes.get(edgeList.get(i).sourceNodeInd).y != dataNodes.get(edgeList.get(i).targetNodeInd).y) {
                 filteredEdgeList.add(edgeList.get(i));
             }
         }
         return filteredEdgeList;
     }
 
-    
+    Vector applySpringForce(int e_ind, int i, double kP) {
+        Node prev = subdivisionPoints.get(e_ind).alv.get(i - 1);
+        Node next = subdivisionPoints.get(e_ind).alv.get(i + 1);
+        Node crnt = subdivisionPoints.get(e_ind).alv.get(i);
+        double x = prev.x - crnt.x + next.x - crnt.x;
+        double y = prev.y - crnt.y + next.y - crnt.y;
+        x *= kP;
+        y *= kP;
+        return new Vector(x, y);
+    }
+
+    Vector applyElectrostaticForce(int e_ind, int i) {
+        Vector sumOfForces = new Vector(0, 0);
+        ArrayList<Integer> compatibleEdgeList = compatibilityList.get(e_ind);
+        for (int oe = 0; oe < compatibleEdgeList.size(); oe++) {
+            double x = subdivisionPoints.get(compatibleEdgeList.get(oe)).alv.get(i).x - subdivisionPoints.get(e_ind).alv.get(i).x;
+            double y = subdivisionPoints.get(compatibleEdgeList.get(oe)).alv.get(i).y - subdivisionPoints.get(e_ind).alv.get(i).y;
+            Vector force = new Vector(x, y);
+            if ((Math.abs(force.x) > eps || Math.abs(force.y) > eps)) {
+                Node source = subdivisionPoints.get(compatibleEdgeList.get(oe)).alv.get(i);
+                Node target = subdivisionPoints.get(e_ind).alv.get(i);
+                double diff = (1 / Math.pow(customEdgeLength(source, target), 1));
+                sumOfForces.x += force.x * diff;
+                sumOfForces.y += force.y * diff;
+            }
+        }
+        return sumOfForces;
+    }
+
+    ArrayList<Vector> applyResultingForcesOnSubdivisionPoints(int e_ind, double P, double S) {
+        double kP = K / (edgeLength(dataEdges.get(e_ind)) * (P + 1));
+        ArrayList<Vector> resultingForcesForSubdivisionPoints = new ArrayList<>();
+        resultingForcesForSubdivisionPoints.add(new Vector(0, 0));
+        for (int i = 1; i < P + 1; i++) {
+            Vector resultingForce = new Vector(0, 0);
+            Vector springForce = applySpringForce(e_ind, i, kP);
+            Vector electrostaticForce = applyElectrostaticForce(e_ind, i);
+            resultingForce.x = S * (springForce.x + electrostaticForce.x);
+            resultingForce.y = S * (springForce.y + electrostaticForce.y);
+            resultingForcesForSubdivisionPoints.add(resultingForce);
+        }
+        resultingForcesForSubdivisionPoints.add(new Vector(0, 0));
+        return resultingForcesForSubdivisionPoints;
+    }
+
 }
