@@ -6,6 +6,10 @@ import java.util.ArrayList;
 class Edge {
     int sourceNodeInd;
     int targetNodeInd;
+    Edge(int sourceNodeInd, int targetNodeInd) {
+        this.sourceNodeInd = sourceNodeInd;
+        this.targetNodeInd = targetNodeInd;
+    }
 }
 
 class Vector {
@@ -21,10 +25,6 @@ class Vector {
     }
 }
 
-class Node extends Vector {
-    int id;
-}
-
 class Path {
     ArrayList<Vector> alv;
 
@@ -35,19 +35,24 @@ class Path {
 
 public class ForceBundling {
 
-    static ArrayList<Node> dataNodes = new ArrayList<>();
-    static ArrayList<Edge> dataEdges = new ArrayList<>();
-    static ArrayList<Path> subdivisionPoints = new ArrayList<>();
-    static ArrayList<ArrayList<Integer>> compatibilityList = new ArrayList<>();
-    final static double K = 0.1;
-    final static double S_initial = 0.1;
-    final static int P_initial = 1;
-    final static int P_rate = 2;
-    final static double C = 6;
-    final static double I_initial = 90;
-    final static double I_rate = 0.6666667;
-    final static double compatibility_threshold = 0.6;
-    final static double eps = 1e-6;
+    ArrayList<Vector> dataNodes = new ArrayList<>();
+    ArrayList<Edge> dataEdges = new ArrayList<>();
+    ArrayList<Path> subdivisionPoints = new ArrayList<>();
+    ArrayList<ArrayList<Integer>> compatibilityList = new ArrayList<>();
+    final double K = 0.1;
+    final double S_initial = 0.1;
+    final int P_initial = 1;
+    final int P_rate = 2;
+    final double C = 6;
+    final double I_initial = 90;
+    final double I_rate = 0.6666667;
+    final double compatibility_threshold = 0.6;
+    final double eps = 1e-6;
+
+    public ForceBundling(ArrayList<Vector> dataNodes, ArrayList<Edge> dataEdges) {
+        this.dataNodes = dataNodes;
+        this.dataEdges = dataEdges;
+    }
 
     double vectorDotProduct(Vector p, Vector q) {
         return p.x * q.x + p.y * q.y;
@@ -293,4 +298,27 @@ public class ForceBundling {
         return subdivisionPoints;
     }
 
+
+    public static void main(String[] args) {
+        ArrayList<Vector> dataNodes = new ArrayList<>();
+        Vector node1 = new Vector(1, 2);
+        Vector node2 = new Vector(10, 12);
+        Vector node3 = new Vector(2, 3);
+        dataNodes.add(node1);
+        dataNodes.add(node2);
+        dataNodes.add(node3);
+        Edge edge1 = new Edge(0, 1);
+        Edge edge2 = new Edge(2, 1);
+        ArrayList<Edge> dataEdges = new ArrayList<>();
+        dataEdges.add(edge1);
+        dataEdges.add(edge2);
+        ForceBundling forceBundling = new ForceBundling(dataNodes, dataEdges);
+        ArrayList<Path> paths = forceBundling.forceBundle();
+        for(Path path : paths) {
+            for(Vector vector : path.alv) {
+                System.out.print(vector.x + ", " + vector.y + " ");
+            }
+            System.out.println();
+        }
+    }
 }
