@@ -44,7 +44,7 @@ public class GraphController extends Controller {
                     "@@ to_tsquery('" + query + "') or " +
                     "to_tsvector('english', to_text) " +
                     "@@ to_tsquery('" + query + "');");
-/*
+
             while (resultSet.next()) {
                 ObjectNode reply = Json.newObject();
                 ArrayNode fromCoordinate = Json.newArray();
@@ -57,8 +57,33 @@ public class GraphController extends Controller {
                 reply.set("target", toCoordinate);
                 replies.add(reply);
             }
-*/
 
+            resultSet.close();
+            statement.close();
+            conn.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ok(Json.toJson(replies));
+    }
+
+    public Result reply(String query) {
+        ArrayNode replies = Json.newArray();
+        try {
+            Class.forName("org.postgresql.Driver");
+            Connection conn = DriverManager
+                    .getConnection("jdbc:postgresql://localhost:5432/graphtweet",
+                            "graphuser", "graphuser");
+            Statement statement = conn.createStatement();
+
+            ResultSet resultSet = statement.executeQuery("select " +
+                    "from_longitude, from_latitude, " +
+                    "to_longitude, to_latitude " +
+                    "from replytweets where " +
+                    "to_tsvector('english', from_text) " +
+                    "@@ to_tsquery('" + query + "') or " +
+                    "to_tsvector('english', to_text) " +
+                    "@@ to_tsquery('" + query + "');");
             ArrayList<Vector> dataNodes = new ArrayList<>();
             ArrayList<Edge> dataEdges = new ArrayList<>();
             while (resultSet.next()) {
@@ -73,7 +98,6 @@ public class GraphController extends Controller {
 
             ForceBundling forceBundling = new ForceBundling(dataNodes, dataEdges);
             ArrayList<Path> pathResult = forceBundling.forceBundle();
-            System.out.println(pathResult.size());
             for (Path path : pathResult) {
                 ObjectNode reply = Json.newObject();
                 ArrayNode pathArray = Json.newArray();

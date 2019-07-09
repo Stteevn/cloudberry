@@ -2,12 +2,6 @@ package controllers;
 
 import java.util.ArrayList;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import play.libs.Json;
-import play.mvc.Controller;
-import play.mvc.Result;
-
 class Edge {
     int sourceNodeInd;
     int targetNodeInd;
@@ -41,8 +35,8 @@ class Path {
 
 public class ForceBundling {
 
-    ArrayList<Vector> dataNodes = new ArrayList<>();
-    ArrayList<Edge> dataEdges = new ArrayList<>();
+    ArrayList<Vector> dataNodes;
+    ArrayList<Edge> dataEdges;
     ArrayList<Path> subdivisionPoints = new ArrayList<>();
     ArrayList<ArrayList<Integer>> compatibilityList = new ArrayList<>();
     final double K = 0.1;
@@ -303,29 +297,4 @@ public class ForceBundling {
         }
         return subdivisionPoints;
     }
-
-/*
-    public static void main(String[] args) {
-        ArrayList<Vector> dataNodes = new ArrayList<>();
-        Vector node1 = new Vector(1, 2);
-        Vector node2 = new Vector(10, 12);
-        Vector node3 = new Vector(2, 3);
-        dataNodes.add(node1);
-        dataNodes.add(node2);
-        dataNodes.add(node3);
-        Edge edge1 = new Edge(0, 1);
-        Edge edge2 = new Edge(2, 1);
-        ArrayList<Edge> dataEdges = new ArrayList<>();
-        dataEdges.add(edge1);
-        dataEdges.add(edge2);
-        ForceBundling forceBundling = new ForceBundling(dataNodes, dataEdges);
-        ArrayList<Path> paths = forceBundling.forceBundle();
-        for(Path path : paths) {
-            for(Vector vector : path.alv) {
-                System.out.print(vector.x + ", " + vector.y + " ");
-            }
-            System.out.println();
-        }
-    }
-*/
 }

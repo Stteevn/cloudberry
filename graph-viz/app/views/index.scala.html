@@ -140,10 +140,10 @@
                             pickable: true,
                             data: data,
                             getSourcePosition: d => d.source,
-                                getTargetPosition: d => d.target,
-                                getSourceColor: [12, 44, 132],
-                                getTargetColor: [177, 0, 38],
-                                gettrokeWidth: 3
+                            getTargetPosition: d => d.target,
+                            getSourceColor: [12, 44, 132],
+                            getTargetColor: [177, 0, 38],
+                            gettrokeWidth: 3
                         });
                         map.addLayer(myArcLayer);
                     }
@@ -153,7 +153,7 @@
                     removeLayer();
                     query = document.getElementById("query").value;
                     var request = new XMLHttpRequest();
-                    request.open('GET', 'http://localhost:9000/replies?query=' + query, false);//for async
+                    request.open('GET', 'http://localhost:9000/query?query=' + query, false);//for async
                     request.send(null);
                     if (request.status === 200) {
                         var data = JSON.parse(request.responseText);
