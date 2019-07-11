@@ -23,7 +23,8 @@
 
         <body>
 
-            <div id="map" style="width:100vw; height: 100vh"></div>
+            <div id="map" style="width: 100vw;
+                height: 100vh"></div>
             <div id="search">
                 <p id="content">Reply Tweets Dataset</p>
                 <input type="text" class="div" id="query"
@@ -74,7 +75,7 @@
                     if (map.getLayer('arc') !== undefined) {
                         map.removeLayer('arc');
                     }
-                    if(map.getLayer('newpath') !== undefined) {
+                    if (map.getLayer('newpath') !== undefined) {
                         map.removeLayer('newpath');
                     }
                 }
@@ -92,8 +93,6 @@
                         const edge_data = data.edge_data;
                         const node_data = data.node_data;
                         const fbundling = d3.ForceEdgeBundling()
-                                .step_size(0.2)
-                                .compatibility_threshold(0.01)
                                 .nodes(node_data)
                                 .edges(edge_data);
                         const results = fbundling();
@@ -117,10 +116,10 @@
                             widthScale: 1,
                             widthMinPixels: 1,
                             getPath: d => d.path,
-                                getWidth: 1,
-                                getColor: [177, 0, 38],
-                                getStrokeWidth: 1
-                    });
+                            getWidth: 1,
+                            getColor: [177, 0, 38],
+                            getStrokeWidth: 1
+                        });
 
                         map.addLayer(layer);
                     }
@@ -153,7 +152,7 @@
                     removeLayer();
                     query = document.getElementById("query").value;
                     var request = new XMLHttpRequest();
-                    request.open('GET', 'http://localhost:9000/query?query=' + query, false);//for async
+                    request.open('GET', 'http://localhost:9010/query?query=' + query, false);//for async
                     request.send(null);
                     if (request.status === 200) {
                         var data = JSON.parse(request.responseText);
@@ -163,16 +162,16 @@
                             type: PathLayer,
                             data: data,
                             pickable: true,
-                            widthScale: 1,
+                            getWidth: 2,
                             widthMinPixels: 1,
+                            getStrokeWidth: 2,
                             getPath: d => d.path,
-                            getWidth: 1,
-                            getColor: [177, 0, 38],
-                            getStrokeWidth: 1
-                    });
+                            getColor: [212, 0, 0],
+                        });
                         map.addLayer(layer);
                     }
                 }
+
         </script>
 
     </html>

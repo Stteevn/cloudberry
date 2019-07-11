@@ -40,13 +40,13 @@ public class ForceBundling {
     ArrayList<Path> subdivisionPoints = new ArrayList<>();
     ArrayList<ArrayList<Integer>> compatibilityList = new ArrayList<>();
     final double K = 0.1;
-    final double S_initial = 0.1;
+    final double S_initial = 0.3;
     final int P_initial = 1;
     final int P_rate = 2;
     final double C = 6;
-    final double I_initial = 90;
-    final double I_rate = 0.6666667;
-    final double compatibility_threshold = 0.6;
+    final double I_initial = 50;
+    final double I_rate = 2.0 / 3.0;
+    final double compatibility_threshold = 0.75;
     final double eps = 1e-6;
 
     public ForceBundling(ArrayList<Vector> dataNodes, ArrayList<Edge> dataEdges) {
@@ -134,6 +134,9 @@ public class ForceBundling {
     }
 
     Vector applySpringForce(int e_ind, int i, double kP) {
+        if(subdivisionPoints.get(e_ind).alv.size() <= 2) {
+            return new Vector(0, 0);
+        }
         Vector prev = subdivisionPoints.get(e_ind).alv.get(i - 1);
         Vector next = subdivisionPoints.get(e_ind).alv.get(i + 1);
         Vector crnt = subdivisionPoints.get(e_ind).alv.get(i);
@@ -154,9 +157,9 @@ public class ForceBundling {
             if ((Math.abs(force.x) > eps || Math.abs(force.y) > eps)) {
                 Vector source = subdivisionPoints.get(compatibleEdgeList.get(oe)).alv.get(i);
                 Vector target = subdivisionPoints.get(e_ind).alv.get(i);
-                double diff = (1 / Math.pow(customEdgeLength(source, target), 1));
-                sumOfForces.x += force.x * diff;
-                sumOfForces.y += force.y * diff;
+                double diff = customEdgeLength(source, target);
+                sumOfForces.x += force.x / diff;
+                sumOfForces.y += force.y / diff;
             }
         }
         return sumOfForces;
@@ -170,8 +173,11 @@ public class ForceBundling {
             Vector resultingForce = new Vector(0, 0);
             Vector springForce = applySpringForce(e_ind, i, kP);
             Vector electrostaticForce = applyElectrostaticForce(e_ind, i);
-            resultingForce.x = S * (springForce.x + electrostaticForce.x);
-            resultingForce.y = S * (springForce.y + electrostaticForce.y);
+            double flen = Math.sqrt(Math.pow(springForce.x + electrostaticForce.x, 2) + Math.pow(springForce.y + electrostaticForce.y, 2));
+            if(flen > 1e-4) {
+                resultingForce.x = S * (springForce.x + electrostaticForce.x) / flen;
+                resultingForce.y = S * (springForce.y + electrostaticForce.y) / flen;
+            }
             resultingForcesForSubdivisionPoints.add(resultingForce);
         }
         resultingForcesForSubdivisionPoints.add(new Vector(0, 0));

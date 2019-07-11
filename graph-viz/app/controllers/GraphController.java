@@ -6,6 +6,9 @@ import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Result;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -89,15 +92,17 @@ public class GraphController extends Controller {
             while (resultSet.next()) {
                 Vector source = new Vector(resultSet.getFloat("from_longitude"), resultSet.getFloat("from_latitude"));
                 Vector target = new Vector(resultSet.getFloat("to_longitude"), resultSet.getFloat("to_latitude"));
-                double eps = 0.1;
+                double eps = 1e-4;
                 if (Math.sqrt(Math.pow(source.x - target.x, 2) + Math.pow(source.y - target.y, 2)) <= eps) continue;
                 dataNodes.add(source);
                 dataNodes.add(target);
                 dataEdges.add(new Edge(dataNodes.size() - 2, dataNodes.size() - 1));
             }
 
+            System.out.println("Edge bundling");
             ForceBundling forceBundling = new ForceBundling(dataNodes, dataEdges);
             ArrayList<Path> pathResult = forceBundling.forceBundle();
+            System.out.println(pathResult.size());
             for (Path path : pathResult) {
                 ObjectNode reply = Json.newObject();
                 ArrayNode pathArray = Json.newArray();
