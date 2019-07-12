@@ -2,11 +2,11 @@ package controllers;
 
 import java.util.ArrayList;
 
-class Edge {
+class EdgeVector {
     int sourceNodeInd;
     int targetNodeInd;
 
-    Edge(int sourceNodeInd, int targetNodeInd) {
+    EdgeVector(int sourceNodeInd, int targetNodeInd) {
         this.sourceNodeInd = sourceNodeInd;
         this.targetNodeInd = targetNodeInd;
     }
@@ -27,7 +27,6 @@ class Vector {
 
 class Path {
     ArrayList<Vector> alv;
-
     Path() {
         alv = new ArrayList<>();
     }
@@ -36,20 +35,20 @@ class Path {
 public class ForceBundling {
 
     ArrayList<Vector> dataNodes;
-    ArrayList<Edge> dataEdges;
+    ArrayList<EdgeVector> dataEdges;
     ArrayList<Path> subdivisionPoints = new ArrayList<>();
     ArrayList<ArrayList<Integer>> compatibilityList = new ArrayList<>();
     final double K = 0.1;
     final double S_initial = 0.3;
     final int P_initial = 1;
     final int P_rate = 2;
-    final double C = 6;
-    final double I_initial = 50;
+    final double C = 5;
+    final double I_initial = 40;
     final double I_rate = 2.0 / 3.0;
     final double compatibility_threshold = 0.75;
     final double eps = 1e-6;
 
-    public ForceBundling(ArrayList<Vector> dataNodes, ArrayList<Edge> dataEdges) {
+    public ForceBundling(ArrayList<Vector> dataNodes, ArrayList<EdgeVector> dataEdges) {
         this.dataNodes = dataNodes;
         this.dataEdges = dataEdges;
     }
@@ -58,11 +57,11 @@ public class ForceBundling {
         return p.x * q.x + p.y * q.y;
     }
 
-    Vector edgeAsVector(Edge e) {
+    Vector edgeAsVector(EdgeVector e) {
         return new Vector(dataNodes.get(e.targetNodeInd).x - dataNodes.get(e.sourceNodeInd).x, dataNodes.get(e.targetNodeInd).y - dataNodes.get(e.sourceNodeInd).y);
     }
 
-    double edgeLength(Edge e) {
+    double edgeLength(EdgeVector e) {
         if (Math.abs(dataNodes.get(e.sourceNodeInd).x - dataNodes.get(e.targetNodeInd).x) < eps &&
                 Math.abs(dataNodes.get(e.sourceNodeInd).y - dataNodes.get(e.targetNodeInd).y) < eps) {
             return eps;
@@ -76,7 +75,7 @@ public class ForceBundling {
         return Math.sqrt(Math.pow(v1.x - v2.x, 2) + Math.pow(v1.y - v2.y, 2));
     }
 
-    Vector edgeMidPoint(Edge e) {
+    Vector edgeMidPoint(EdgeVector e) {
         double midX = (dataNodes.get(e.sourceNodeInd).x + dataNodes.get(e.targetNodeInd).x) / 2.0;
         double midY = (dataNodes.get(e.sourceNodeInd).y + dataNodes.get(e.targetNodeInd).y) / 2.0;
         return new Vector(midX, midY);
@@ -122,8 +121,8 @@ public class ForceBundling {
         }
     }
 
-    ArrayList<Edge> filterSelfLoops(ArrayList<Edge> edgeList) {
-        ArrayList<Edge> filteredEdgeList = new ArrayList<>();
+    ArrayList<EdgeVector> filterSelfLoops(ArrayList<EdgeVector> edgeList) {
+        ArrayList<EdgeVector> filteredEdgeList = new ArrayList<>();
         for (int i = 0; i < edgeList.size(); i++) {
             if (dataNodes.get(edgeList.get(i).sourceNodeInd).x != dataNodes.get(edgeList.get(i).targetNodeInd).x ||
                     dataNodes.get(edgeList.get(i).sourceNodeInd).y != dataNodes.get(edgeList.get(i).targetNodeInd).y) {
@@ -216,16 +215,16 @@ public class ForceBundling {
         }
     }
 
-    double angleCompatibility(Edge P, Edge Q) {
+    double angleCompatibility(EdgeVector P, EdgeVector Q) {
         return Math.abs(vectorDotProduct(edgeAsVector(P), edgeAsVector(Q)) / (edgeLength(P) * edgeLength(Q)));
     }
 
-    double scaleCompatibility(Edge P, Edge Q) {
+    double scaleCompatibility(EdgeVector P, EdgeVector Q) {
         double lavg = (edgeLength(P) + edgeLength(Q)) / 2.0;
         return 2.0 / (lavg / Math.min(edgeLength(P), edgeLength(Q)) + Math.max(edgeLength(P), edgeLength(Q)) / lavg);
     }
 
-    double positionCompatibility(Edge P, Edge Q) {
+    double positionCompatibility(EdgeVector P, EdgeVector Q) {
         double lavg = (edgeLength(P) + edgeLength(Q)) / 2.0;
         Vector midP = new Vector(
                 (dataNodes.get(P.sourceNodeInd).x + dataNodes.get(P.targetNodeInd).x) / 2.0,
@@ -238,7 +237,7 @@ public class ForceBundling {
         return lavg / (lavg + euclideanDistance(midP, midQ));
     }
 
-    double edgeVisibility(Edge P, Edge Q) {
+    double edgeVisibility(EdgeVector P, EdgeVector Q) {
         Vector I0 = projectPointOnLine(dataNodes.get(Q.sourceNodeInd), dataNodes.get(P.sourceNodeInd), dataNodes.get(P.targetNodeInd));
         Vector I1 = projectPointOnLine(dataNodes.get(Q.targetNodeInd), dataNodes.get(P.sourceNodeInd), dataNodes.get(P.targetNodeInd));
         Vector midI = new Vector(
@@ -252,15 +251,15 @@ public class ForceBundling {
         return Math.max(0, 1 - 2 * euclideanDistance(midP, midI) / euclideanDistance(I0, I1));
     }
 
-    double visibilityCompatibility(Edge P, Edge Q) {
+    double visibilityCompatibility(EdgeVector P, EdgeVector Q) {
         return Math.min(edgeVisibility(P, Q), edgeVisibility(Q, P));
     }
 
-    double compatibilityScore(Edge P, Edge Q) {
+    double compatibilityScore(EdgeVector P, EdgeVector Q) {
         return (angleCompatibility(P, Q) * scaleCompatibility(P, Q) * positionCompatibility(P, Q) * visibilityCompatibility(P, Q));
     }
 
-    boolean areCompatible(Edge P, Edge Q) {
+    boolean areCompatible(EdgeVector P, EdgeVector Q) {
         return (compatibilityScore(P, Q) > compatibility_threshold);
     }
 
