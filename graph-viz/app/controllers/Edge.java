@@ -8,15 +8,39 @@ public class Edge {
     private double toLatitude;
     private double toLongitude;
 
-    public static double get_epslion() {
-        return _epslion;
+    public Edge(double fromLatitude, double fromLongitude, double toLatitude, double toLongitude, int weight) {
+        this.fromLatitude = fromLatitude;
+        this.fromLongitude = fromLongitude;
+        this.toLatitude = toLatitude;
+        this.toLongitude = toLongitude;
+        this.weight = weight;
     }
 
-    public static void set_epslion(double _epslion) {
-        Edge._epslion = _epslion;
+    public Edge updateWeight(int num) {
+        Edge newEdge = this;
+        newEdge.weight += num;
+        return newEdge;
     }
 
-    private static double _epslion = 10;
+    public int getWeight() {
+        return weight;
+    }
+
+    public void setWeight(int weight) {
+        this.weight = weight;
+    }
+
+    private int weight;
+
+    public static double get_epsilon() {
+        return _epsilon;
+    }
+
+    public static void set_epsilon(double _epsilon) {
+        Edge._epsilon = _epsilon;
+    }
+
+    private static double _epsilon = 10;
 
     public Edge() {
     }
@@ -88,25 +112,20 @@ public class Edge {
             return false;
         }
         Edge edge = (Edge) o;
-        if (_epslion == 0) {
-            return fromLatitude == edge.fromLatitude && fromLongitude == edge.fromLongitude && toLatitude == edge.toLatitude && toLongitude == edge.toLongitude;
-        } else {
-            return getBlockNum(fromLongitude, fromLatitude) == getBlockNum(edge.fromLongitude, edge.fromLatitude)
-                    && getBlockNum(toLongitude, toLatitude) == getBlockNum(edge.toLongitude, edge.toLatitude);
-        }
+        return fromLatitude == edge.fromLatitude && fromLongitude == edge.fromLongitude && toLatitude == edge.toLatitude && toLongitude == edge.toLongitude;
     }
 
     private int getBlockNum(double longitude, double latitude) {
-        return (int) ((longitude + 180) / _epslion) + (int) ((latitude + 90) / _epslion) * (int) (360 / _epslion);
+        return (int) ((longitude + 180) / _epsilon) + (int) ((latitude + 90) / _epsilon) * (int) (360 / _epsilon);
+    }
+
+    public int getBlock() {
+        return getBlockNum(fromLongitude, fromLatitude) * (int) (360 / _epsilon) * (int) (180 / _epsilon) + getBlockNum(toLongitude, toLatitude);
     }
 
     @Override
     public int hashCode() {
-        if (_epslion == 0) {
-            return Objects.hash(fromLatitude, fromLongitude, toLatitude, toLongitude);
-        } else {
-            return Objects.hash(getBlockNum(fromLongitude, fromLatitude), getBlockNum(toLongitude, toLatitude));
-        }
+        return Objects.hash(fromLatitude, fromLongitude, toLatitude, toLongitude);
     }
 
     @Override

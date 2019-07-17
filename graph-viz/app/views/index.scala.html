@@ -1,6 +1,7 @@
 @()
 
 
+
 @defining(play.core.PlayVersion.current) { version =>
 
     <html>
@@ -21,7 +22,7 @@
                 }
 
                 #info {
-                    left: 0px
+                    left: 0px;
                     display: block;
                     position: relative;
                     margin: 0px auto;
@@ -57,6 +58,7 @@
 
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
         <link href='assets/lib/bootstrap/css/bootstrap.css' rel='stylesheet' />
+
         <script src="/assets/javascripts/deckgl.min.js"></script>
         <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.50.0/mapbox-gl.js'></script>
         <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.50.0/mapbox-gl.css' rel='stylesheet' />
@@ -71,8 +73,6 @@
                     maxZoom: 5,
                     minZoom: 2
                 });
-                let myArcLayer
-
                 var query = "";
 
                 function removeLayer() {
@@ -114,7 +114,7 @@
                             data: data,
                             getSourcePosition: d => d.source,
                             getTargetPosition: d => d.target,
-                            getStrokeWidth: d => d.width * 2,
+                            getStrokeWidth: d => Math.min(15, d.width * 2),
                             getColor: [177, 0, 38],
                         });
 
@@ -125,8 +125,8 @@
                     var fend = performance.now();
                     console.log("Time to render graph  " + (requestTimeEnd - parseTimeEnd) + " ms");
                     console.log("Time to parse JSON " + (parseTimeEnd - requestTimeStart) + " ms");
-                    //console.log("Total time of receiving data and finishing in deckGL is " + (requestTimeEnd-requestTimeStart) + " ms");
-                    //console.log("Total time of drawGraph() is " + (fend-fstart) + " ms");
+                    console.log("Total time of receiving data and finishing in deckGL is " + (requestTimeEnd-requestTimeStart) + " ms");
+                    console.log("Total time of drawGraph() is " + (fend-fstart) + " ms");
                 };
 
                 function newGraph() {
@@ -157,8 +157,8 @@
                             data: data,
                             getSourcePosition: d => d.from,
                             getTargetPosition: d => d.to,
-                            getStrokeWidth: d => (d.width * 2) ** 0.5,
-                            getColor: [177, 0, 38],
+                            getStrokeWidth: d => Math.min(15, Math.ceil(Math.pow(d.width, 1/3))),
+                            getColor: [177, 0, 38]
                         });
                         map.addLayer(layer);
                     }

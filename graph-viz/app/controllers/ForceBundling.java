@@ -121,17 +121,6 @@ public class ForceBundling {
         }
     }
 
-    ArrayList<EdgeVector> filterSelfLoops(ArrayList<EdgeVector> edgeList) {
-        ArrayList<EdgeVector> filteredEdgeList = new ArrayList<>();
-        for (int i = 0; i < edgeList.size(); i++) {
-            if (dataNodes.get(edgeList.get(i).sourceNodeInd).x != dataNodes.get(edgeList.get(i).targetNodeInd).x ||
-                    dataNodes.get(edgeList.get(i).sourceNodeInd).y != dataNodes.get(edgeList.get(i).targetNodeInd).y) {
-                filteredEdgeList.add(edgeList.get(i));
-            }
-        }
-        return filteredEdgeList;
-    }
-
     Vector applySpringForce(int e_ind, int i, double kP) {
         if(subdivisionPoints.get(e_ind).alv.size() <= 2) {
             return new Vector(0, 0);
