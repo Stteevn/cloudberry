@@ -15,6 +15,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.*;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -34,14 +35,16 @@ public class GraphController extends Controller {
 
 //    static ThreadLocal<ArrayList<Vector>> alldataNodes;
 //    static ThreadLocal<ArrayList<EdgeVector>> alldataEdges;
-//    static ThreadLocal<ArrayList<Integer>> allcloseEdgeList;
+//    static ThreadLocal<ArrayList<Integer>> weights;
 //    static ThreadLocal<Hashtable<Integer, Edge>> edges;
     static ArrayList<Vector> alldataNodes;
     static ArrayList<EdgeVector> alldataEdges;
-    static ArrayList<Integer> allcloseEdgeList;
+    static ArrayList<Integer> weights; // weight list
     static Hashtable<Integer, Edge> edges;
     private File configFile = new File("./conf/config.properties");
     private Properties configProps;
+    public static final String finished = "Y";
+    public static final String unfinished = "N";
 
     public void index(String query, OriginalActor originalActor) {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -62,34 +65,14 @@ public class GraphController extends Controller {
         }else{
             alldataNodes = new ArrayList<>();
             alldataEdges = new ArrayList<>();
-            allcloseEdgeList = new ArrayList<>();
+            weights = new ArrayList<>();
             edges = new Hashtable<>();
         }
-//        //        String[] messageAssembler = query.split(" ");
-//
-//        query = messageAssembler[0];
-//        double lowerLongitude = Double.parseDouble(messageAssembler[1]);
-//        double upperLongitude = Double.parseDouble(messageAssembler[2]);
-//        double lowerLatitude = Double.parseDouble(messageAssembler[3]);
-//        double upperLatitude = Double.parseDouble(messageAssembler[4]);
-//        if (messageAssembler.length == 6) {
-//            endDate = messageAssembler[5];
-//        }
-//        else {
-////            alldataNodes = ThreadLocal.withInitial(ArrayList::new);
-////            alldataEdges = ThreadLocal.withInitial(ArrayList::new);
-////            allcloseEdgeList = ThreadLocal.withInitial(ArrayList::new);
-////            edges = ThreadLocal.withInitial(Hashtable::new);
-//            alldataNodes = new ArrayList<>();
-//            alldataEdges = new ArrayList<>();
-//            allcloseEdgeList = new ArrayList<>();
-//            edges = new Hashtable<>();
-//        }
         String firstDate = null;
         String lastDate = null;
         int queryPeriod = 0;
         String json = "";
-        String dt_ret = "";
+        String dateReturn = "";
         long startIndex = System.currentTimeMillis();
 
         try {
@@ -102,31 +85,14 @@ public class GraphController extends Controller {
         }
 
         try {
-            Class.forName("org.postgresql.Driver");
-            Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/graphtweet", "graphuser",
-                    "graphuser");
+            Connection conn = getConnection();
 
-            // compute the start date and end date of each sub_query
-            String dt;
-            if (endDate == null) {
-                dt = firstDate;  // Start date
-            } else {
-                dt = endDate;
-            }
-
-//            System.out.println(dt);
-            String start = dt;
+            String date = getDate(endDate, firstDate);
+            String start = date;
             SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
-            Calendar c = Calendar.getInstance();
-            c.setTime(sdf.parse(dt));
-            c.add(Calendar.HOUR, queryPeriod);  // number of days to add
-            dt = sdf.format(c.getTime());  // dt is now the new date
-            String end = dt;
-
-            // compute the return string as: Y/N + end date of each sub_query
-            String str_stop = lastDate;
-            Calendar cal_stop = Calendar.getInstance();
-            cal_stop.setTime(sdf.parse(str_stop));
+            Calendar c = incrementCalendar(queryPeriod, date, sdf);
+            date = sdf.format(c.getTime());
+            dateReturn = getDateReturn(lastDate, date, sdf, c);
 
             String searchQuery = "select " + "from_longitude, from_latitude, " + "to_longitude, to_latitude "
                     + "from replytweets where (" + "to_tsvector('english', from_text) " + "@@ to_tsquery( ? ) or "
@@ -134,7 +100,7 @@ public class GraphController extends Controller {
                     + "@@ to_tsquery( ? )) and ((from_longitude between ? AND ? AND from_latitude between ? AND ?) OR"
                     + " (to_longitude between ? AND ? AND to_latitude between ? AND ?)) "
                     + "AND to_create_at::timestamp > TO_TIMESTAMP('" + start + "', 'yyyymmddhh24miss') "
-                    + "AND to_create_at::timestamp <= TO_TIMESTAMP('" + end + "', 'yyyymmddhh24miss');";
+                    + "AND to_create_at::timestamp <= TO_TIMESTAMP('" + date + "', 'yyyymmddhh24miss');";
 
             PreparedStatement state = conn.prepareStatement(searchQuery);
             state.setString(1, query);
@@ -165,13 +131,6 @@ public class GraphController extends Controller {
             json = objectMapper.writeValueAsString(edges);
             long endIndex = System.currentTimeMillis();
 
-            if (!c.before(cal_stop)) {
-//                System.out.println("Y" + dt);
-                dt_ret = "Y" + dt;
-            } else {
-//                System.out.println("N" + dt);
-                dt_ret = "N" + dt;
-            }
 
             resultSet.close();
             state.close();
@@ -184,7 +143,45 @@ public class GraphController extends Controller {
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
-        originalActor.returnData(dt_ret + json);
+        originalActor.returnData(dateReturn + json);
+    }
+
+    private String getDateReturn(String lastDate, String date, SimpleDateFormat sdf, Calendar c) throws ParseException {
+        Calendar lastDateCalendar = Calendar.getInstance();
+        lastDateCalendar.setTime(sdf.parse(lastDate));
+
+        String dateReturn;
+        if (!c.before(lastDateCalendar)) {
+                System.out.println(finished + date);
+            dateReturn = finished + date;
+        } else {
+                System.out.println(unfinished + date);
+            dateReturn = unfinished + date;
+        }
+        return dateReturn;
+    }
+
+    private Calendar incrementCalendar(int queryPeriod, String date, SimpleDateFormat sdf) throws ParseException {
+        Calendar c = Calendar.getInstance();
+        c.setTime(sdf.parse(date));
+        c.add(Calendar.HOUR, queryPeriod);  // number of days to add
+        return c;
+    }
+
+    private String getDate(String endDate, String firstDate) {
+        String date;
+        if (endDate.equals("")) {
+            date = firstDate;  // Start date
+        } else {
+            date = endDate;
+        }
+        return date;
+    }
+
+    private Connection getConnection() throws ClassNotFoundException, SQLException {
+        Class.forName("org.postgresql.Driver");
+        return DriverManager.getConnection("jdbc:postgresql://localhost:5432/graphtweet", "graphuser",
+                "graphuser");
     }
 
     public void reply(String query, BundleActor bundleActor) {
@@ -206,22 +203,22 @@ public class GraphController extends Controller {
         }else{
             alldataNodes = new ArrayList<>();
             alldataEdges = new ArrayList<>();
-            allcloseEdgeList = new ArrayList<>();
+            weights = new ArrayList<>();
             edges = new Hashtable<>();
         }
         String json = "";
         long startReply = System.currentTimeMillis();
-        String dt_ret = "";
+        String dateReturn = "";
         try {
             Edge.set_epsilon(9);
-            dt_ret = queryResult(query, endDate, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude);
+            dateReturn = queryResult(query, endDate, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude);
             long startBundling = System.currentTimeMillis();
 //            ArrayList<Vector> dataNodes = new ArrayList<>();
 //            ArrayList<EdgeVector> dataEdges = new ArrayList<>();
 //            ArrayList<Integer> closeEdgeList = new ArrayList<>();
 
             for (Map.Entry<Integer, Edge> entry : edges.entrySet()) {
-                allcloseEdgeList.add(entry.getValue().getWeight());
+                weights.add(entry.getValue().getWeight());
                 alldataNodes.add(new Vector(entry.getValue().getFromLongitude(), entry.getValue().getFromLatitude()));
                 alldataNodes.add(new Vector(entry.getValue().getToLongitude(), entry.getValue().getToLatitude()));
                 alldataEdges.add(new EdgeVector(alldataNodes.size() - 2, alldataNodes.size() - 1));
@@ -243,7 +240,7 @@ public class GraphController extends Controller {
                     toArray.add(path.alv.get(j + 1).y);
                     lineNode.putArray("from").addAll(fromArray);
                     lineNode.putArray("to").addAll(toArray);
-                    lineNode.put("width", allcloseEdgeList.get(edgeNum));
+                    lineNode.put("width", weights.get(edgeNum));
                     pathJson.add(lineNode);
                 }
                 edgeNum++;
@@ -258,7 +255,7 @@ public class GraphController extends Controller {
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
-        bundleActor.returnData(dt_ret + json);
+        bundleActor.returnData(dateReturn + json);
     }
 
     private String queryResult(String query, String endDate, double lowerLongitude, double upperLongitude, double lowerLatitude,
@@ -270,7 +267,7 @@ public class GraphController extends Controller {
         String firstDate = null;
         String lastDate = null;
         int queryPeriod = 0;
-        String dt_ret = "";
+        String dateReturn = "";
 
         try {
             loadProperties();
@@ -282,31 +279,14 @@ public class GraphController extends Controller {
         }
 
         try {
-            Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/graphtweet", "graphuser",
-                    "graphuser");
+            conn = getConnection();
 
-            // compute the start date and end date of each sub_query
-            String dt;
-            if (endDate == null) {
-                dt = firstDate;  // Start date
-            } else {
-                dt = endDate;
-            }
-
-            System.out.println(dt);
-            String start = dt;
+            String date = getDate(endDate, firstDate);
+            String start = date;
             SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
-            Calendar c = Calendar.getInstance();
-            c.setTime(sdf.parse(dt));
-            c.add(Calendar.HOUR, queryPeriod);  // number of days to add
-            dt = sdf.format(c.getTime());  // dt is now the new date
-            String end = dt;
-
-            // compute the return string as: Y/N + end date of each sub_query
-            String str_stop = lastDate;
-            Calendar cal_stop = Calendar.getInstance();
-            cal_stop.setTime(sdf.parse(str_stop));
+            Calendar c = incrementCalendar(queryPeriod, date, sdf);
+            date = sdf.format(c.getTime());
+            dateReturn = getDateReturn(lastDate, date, sdf, c);
 
             String searchQuery = "select " + "from_longitude, from_latitude, " + "to_longitude, to_latitude "
                     + "from replytweets where (" + "to_tsvector('english', from_text) " + "@@ to_tsquery( ? ) or "
@@ -314,7 +294,7 @@ public class GraphController extends Controller {
                     + "@@ to_tsquery( ? )) and ((from_longitude between ? AND ? AND from_latitude between ? AND ?) OR"
                     + " (to_longitude between ? AND ? AND to_latitude between ? AND ?)) AND sqrt(pow(from_latitude - to_latitude, 2) + pow(from_longitude - to_longitude, 2)) >= ? "
                     + "AND to_create_at::timestamp > TO_TIMESTAMP('" + start + "', 'yyyymmddhh24miss') "
-                    + "AND to_create_at::timestamp <= TO_TIMESTAMP('" + end + "', 'yyyymmddhh24miss');";
+                    + "AND to_create_at::timestamp <= TO_TIMESTAMP('" + date + "', 'yyyymmddhh24miss');";
             state = conn.prepareStatement(searchQuery);
             state.setString(1, query);
             state.setString(2, query);
@@ -345,13 +325,6 @@ public class GraphController extends Controller {
                 }
             }
 
-            if (!c.before(cal_stop)) {
-                System.out.println("Y" + dt);
-                dt_ret = "Y" + dt;
-            } else {
-                System.out.println("N" + dt);
-                dt_ret = "N" + dt;
-            }
 
             resultSet.close();
             state.close();
@@ -359,7 +332,7 @@ public class GraphController extends Controller {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return dt_ret;
+        return dateReturn;
     }
 
     private void loadProperties() throws IOException {

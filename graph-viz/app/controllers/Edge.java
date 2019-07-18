@@ -7,6 +7,7 @@ public class Edge {
     private double fromLongitude;
     private double toLatitude;
     private double toLongitude;
+    private int weight;
 
     public Edge(double fromLatitude, double fromLongitude, double toLatitude, double toLongitude, int weight) {
         this.fromLatitude = fromLatitude;
@@ -29,8 +30,6 @@ public class Edge {
     public void setWeight(int weight) {
         this.weight = weight;
     }
-
-    private int weight;
 
     public static double get_epsilon() {
         return _epsilon;
