@@ -31,10 +31,14 @@ public class GraphController extends Controller {
      * <code>/</code>.
      */
 
-    static ThreadLocal<ArrayList<Vector>> alldataNodes;
-    static ThreadLocal<ArrayList<EdgeVector>> alldataEdges;
-    static ThreadLocal<ArrayList<Integer>> allcloseEdgeList;
-    static ThreadLocal<Hashtable<Integer, Edge>> edges;
+//    static ThreadLocal<ArrayList<Vector>> alldataNodes;
+//    static ThreadLocal<ArrayList<EdgeVector>> alldataEdges;
+//    static ThreadLocal<ArrayList<Integer>> allcloseEdgeList;
+//    static ThreadLocal<Hashtable<Integer, Edge>> edges;
+    static ArrayList<Vector> alldataNodes;
+    static ArrayList<EdgeVector> alldataEdges;
+    static ArrayList<Integer> allcloseEdgeList;
+    static Hashtable<Integer, Edge> edges;
     private File configFile = new File("./conf/config.properties");
     private Properties configProps;
 
@@ -50,10 +54,14 @@ public class GraphController extends Controller {
             endDate = messageAssembler[5];
         }
         else {
-            alldataNodes = ThreadLocal.withInitial(ArrayList::new);
-            alldataEdges = ThreadLocal.withInitial(ArrayList::new);
-            allcloseEdgeList = ThreadLocal.withInitial(ArrayList::new);
-            edges = ThreadLocal.withInitial(Hashtable::new);
+//            alldataNodes = ThreadLocal.withInitial(ArrayList::new);
+//            alldataEdges = ThreadLocal.withInitial(ArrayList::new);
+//            allcloseEdgeList = ThreadLocal.withInitial(ArrayList::new);
+//            edges = ThreadLocal.withInitial(Hashtable::new);
+            alldataNodes = new ArrayList<>();
+            alldataEdges = new ArrayList<>();
+            allcloseEdgeList = new ArrayList<>();
+            edges = new Hashtable<>();
         }
         String firstDate = null;
         String lastDate = null;
@@ -169,10 +177,14 @@ public class GraphController extends Controller {
             endDate = messageAssembler[5];
         }
         else {
-            alldataNodes = ThreadLocal.withInitial(ArrayList::new);
-            alldataEdges = ThreadLocal.withInitial(ArrayList::new);
-            allcloseEdgeList = ThreadLocal.withInitial(ArrayList::new);
-            edges = ThreadLocal.withInitial(Hashtable::new);
+//            alldataNodes = ThreadLocal.withInitial(ArrayList::new);
+//            alldataEdges = ThreadLocal.withInitial(ArrayList::new);
+//            allcloseEdgeList = ThreadLocal.withInitial(ArrayList::new);
+//            edges = ThreadLocal.withInitial(Hashtable::new);
+            alldataNodes = new ArrayList<>();
+            alldataEdges = new ArrayList<>();
+            allcloseEdgeList = new ArrayList<>();
+            edges = new Hashtable<>();
         }
         String json = "";
         long startReply = System.currentTimeMillis();
@@ -185,13 +197,13 @@ public class GraphController extends Controller {
 //            ArrayList<EdgeVector> dataEdges = new ArrayList<>();
 //            ArrayList<Integer> closeEdgeList = new ArrayList<>();
 
-            for (Map.Entry<Integer, Edge> entry : edges.get().entrySet()) {
-                allcloseEdgeList.get().add(entry.getValue().getWeight());
-                alldataNodes.get().add(new Vector(entry.getValue().getFromLongitude(), entry.getValue().getFromLatitude()));
-                alldataNodes.get().add(new Vector(entry.getValue().getToLongitude(), entry.getValue().getToLatitude()));
-                alldataEdges.get().add(new EdgeVector(alldataNodes.get().size() - 2, alldataNodes.get().size() - 1));
+            for (Map.Entry<Integer, Edge> entry : edges.entrySet()) {
+                allcloseEdgeList.add(entry.getValue().getWeight());
+                alldataNodes.add(new Vector(entry.getValue().getFromLongitude(), entry.getValue().getFromLatitude()));
+                alldataNodes.add(new Vector(entry.getValue().getToLongitude(), entry.getValue().getToLatitude()));
+                alldataEdges.add(new EdgeVector(alldataNodes.size() - 2, alldataNodes.size() - 1));
             }
-            ForceBundling forceBundling = new ForceBundling(alldataNodes.get(), alldataEdges.get());
+            ForceBundling forceBundling = new ForceBundling(alldataNodes, alldataEdges);
             ArrayList<Path> pathResult = forceBundling.forceBundle();
             ObjectMapper objectMapper = new ObjectMapper();
             ArrayNode pathJson = objectMapper.createArrayNode();
@@ -208,7 +220,7 @@ public class GraphController extends Controller {
                     toArray.add(path.alv.get(j + 1).y);
                     lineNode.putArray("from").addAll(fromArray);
                     lineNode.putArray("to").addAll(toArray);
-                    lineNode.put("width", allcloseEdgeList.get().get(edgeNum));
+                    lineNode.put("width", allcloseEdgeList.get(edgeNum));
                     pathJson.add(lineNode);
                 }
                 edgeNum++;
@@ -219,7 +231,7 @@ public class GraphController extends Controller {
             System.out.println("Total time in executing query in database is " + (startBundling - startReply) + " ms");
             System.out.println("Total time in edge bundling is " + (startParse - startBundling) + " ms");
             System.out.println("Total time in running replay() is " + (endReply - startReply) + " ms");
-            System.out.println("Total number of records " + edges.get().size());
+            System.out.println("Total number of records " + edges.size());
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -301,12 +313,12 @@ public class GraphController extends Controller {
                 double toLatitude = resultSet.getDouble("to_latitude");
 
                 Edge currentEdge = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude, 1);
-                if (edges.get().containsKey(currentEdge.getBlock())) {
-                    Edge oldEdge = edges.get().get(currentEdge.getBlock());
-                    edges.get().remove(currentEdge.getBlock());
-                    edges.get().put(currentEdge.getBlock(), oldEdge.updateWeight(1));
+                if (edges.containsKey(currentEdge.getBlock())) {
+                    Edge oldEdge = edges.get(currentEdge.getBlock());
+                    edges.remove(currentEdge.getBlock());
+                    edges.put(currentEdge.getBlock(), oldEdge.updateWeight(1));
                 } else {
-                    edges.get().put(currentEdge.getBlock(), currentEdge);
+                    edges.put(currentEdge.getBlock(), currentEdge);
                 }
             }
 
