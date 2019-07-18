@@ -1,14 +1,15 @@
 package controllers;
 
 import actors.BundleActor;
-import actors.EchoActor;
+import actors.OriginalActor;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import play.libs.Json;
 import play.mvc.*;
 
+import javax.swing.plaf.synth.SynthEditorPaneUI;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -42,27 +43,48 @@ public class GraphController extends Controller {
     private File configFile = new File("./conf/config.properties");
     private Properties configProps;
 
-    public void index(String query, EchoActor echoActor) {
-        String[] messageAssembler = query.split(" ");
-        String endDate = "";
-        query = messageAssembler[0];
-        double lowerLongitude = Double.parseDouble(messageAssembler[1]);
-        double upperLongitude = Double.parseDouble(messageAssembler[2]);
-        double lowerLatitude = Double.parseDouble(messageAssembler[3]);
-        double upperLatitude = Double.parseDouble(messageAssembler[4]);
-        if (messageAssembler.length == 6) {
-            endDate = messageAssembler[5];
+    public void index(String query, OriginalActor originalActor) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode jsonNode = null;
+        try {
+            jsonNode = objectMapper.readTree(query);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        else {
-//            alldataNodes = ThreadLocal.withInitial(ArrayList::new);
-//            alldataEdges = ThreadLocal.withInitial(ArrayList::new);
-//            allcloseEdgeList = ThreadLocal.withInitial(ArrayList::new);
-//            edges = ThreadLocal.withInitial(Hashtable::new);
+        double lowerLongitude = Double.parseDouble(jsonNode.get("lowerLongitude").asText());
+        double upperLongitude = Double.parseDouble(jsonNode.get("upperLongitude").asText());
+        double lowerLatitude = Double.parseDouble(jsonNode.get("lowerLatitude").asText());
+        double upperLatitude = Double.parseDouble(jsonNode.get("upperLatitude").asText());
+        query = jsonNode.get("query").asText();
+        String endDate = null;
+        if (jsonNode.has("date")) {
+            endDate = jsonNode.get("date").asText();
+        }else{
             alldataNodes = new ArrayList<>();
             alldataEdges = new ArrayList<>();
             allcloseEdgeList = new ArrayList<>();
             edges = new Hashtable<>();
         }
+//        //        String[] messageAssembler = query.split(" ");
+//
+//        query = messageAssembler[0];
+//        double lowerLongitude = Double.parseDouble(messageAssembler[1]);
+//        double upperLongitude = Double.parseDouble(messageAssembler[2]);
+//        double lowerLatitude = Double.parseDouble(messageAssembler[3]);
+//        double upperLatitude = Double.parseDouble(messageAssembler[4]);
+//        if (messageAssembler.length == 6) {
+//            endDate = messageAssembler[5];
+//        }
+//        else {
+////            alldataNodes = ThreadLocal.withInitial(ArrayList::new);
+////            alldataEdges = ThreadLocal.withInitial(ArrayList::new);
+////            allcloseEdgeList = ThreadLocal.withInitial(ArrayList::new);
+////            edges = ThreadLocal.withInitial(Hashtable::new);
+//            alldataNodes = new ArrayList<>();
+//            alldataEdges = new ArrayList<>();
+//            allcloseEdgeList = new ArrayList<>();
+//            edges = new Hashtable<>();
+//        }
         String firstDate = null;
         String lastDate = null;
         int queryPeriod = 0;
@@ -86,7 +108,7 @@ public class GraphController extends Controller {
 
             // compute the start date and end date of each sub_query
             String dt;
-            if (endDate.equals("")) {
+            if (endDate == null) {
                 dt = firstDate;  // Start date
             } else {
                 dt = endDate;
@@ -136,7 +158,7 @@ public class GraphController extends Controller {
                 Edge currentEdge = new Edge(fromLatitude, fromLongtitude, toLatitude, toLongtitude);
                 edges.add(currentEdge);
             }
-            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper = new ObjectMapper();
             SimpleModule module = new SimpleModule();
             module.addSerializer(Edge.class, new EdgeSerializer());
             objectMapper.registerModule(module);
@@ -162,25 +184,26 @@ public class GraphController extends Controller {
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
-        echoActor.returnData(dt_ret + json);
+        originalActor.returnData(dt_ret + json);
     }
 
     public void reply(String query, BundleActor bundleActor) {
-        String[] messageAssembler = query.split(" ");
-        String endDate = "";
-        query = messageAssembler[0];
-        double lowerLongitude = Double.parseDouble(messageAssembler[1]);
-        double upperLongitude = Double.parseDouble(messageAssembler[2]);
-        double lowerLatitude = Double.parseDouble(messageAssembler[3]);
-        double upperLatitude = Double.parseDouble(messageAssembler[4]);
-        if (messageAssembler.length == 6) {
-            endDate = messageAssembler[5];
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode jsonNode = null;
+        try {
+            jsonNode = objectMapper.readTree(query);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        else {
-//            alldataNodes = ThreadLocal.withInitial(ArrayList::new);
-//            alldataEdges = ThreadLocal.withInitial(ArrayList::new);
-//            allcloseEdgeList = ThreadLocal.withInitial(ArrayList::new);
-//            edges = ThreadLocal.withInitial(Hashtable::new);
+        double lowerLongitude = Double.parseDouble(jsonNode.get("lowerLongitude").asText());
+        double upperLongitude = Double.parseDouble(jsonNode.get("upperLongitude").asText());
+        double lowerLatitude = Double.parseDouble(jsonNode.get("lowerLatitude").asText());
+        double upperLatitude = Double.parseDouble(jsonNode.get("upperLatitude").asText());
+        query = jsonNode.get("query").asText();
+        String endDate = null;
+        if (jsonNode.has("date")) {
+            endDate = jsonNode.get("date").asText();
+        }else{
             alldataNodes = new ArrayList<>();
             alldataEdges = new ArrayList<>();
             allcloseEdgeList = new ArrayList<>();
@@ -205,7 +228,7 @@ public class GraphController extends Controller {
             }
             ForceBundling forceBundling = new ForceBundling(alldataNodes, alldataEdges);
             ArrayList<Path> pathResult = forceBundling.forceBundle();
-            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper = new ObjectMapper();
             ArrayNode pathJson = objectMapper.createArrayNode();
             long startParse = System.currentTimeMillis();
             int edgeNum = 0;
@@ -265,7 +288,7 @@ public class GraphController extends Controller {
 
             // compute the start date and end date of each sub_query
             String dt;
-            if (endDate.equals("")) {
+            if (endDate == null) {
                 dt = firstDate;  // Start date
             } else {
                 dt = endDate;

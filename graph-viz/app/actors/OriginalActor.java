@@ -5,17 +5,17 @@ import akka.actor.ActorRef;
 import akka.actor.Props;
 import controllers.GraphController;
 
-public class EchoActor extends AbstractActor {
+public class OriginalActor extends AbstractActor {
 
     private static GraphController graphController = new GraphController();
 
     public static Props props(ActorRef out) {
-        return Props.create(EchoActor.class, out);
+        return Props.create(OriginalActor.class, out);
     }
 
     private final ActorRef out;
 
-    public EchoActor(ActorRef out) {
+    public OriginalActor(ActorRef out) {
         this.out = out;
     }
 

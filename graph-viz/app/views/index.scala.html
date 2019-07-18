@@ -75,46 +75,31 @@
                 });
                 var query = "";
 
-                var layer_id_list = [];
-                var layer_data_amount = [];
+                var layerIdList = [];
+                var layerDataAmount = [];
                 var cnt = 0;
 
-                function add_id_2_list(id, num) {
-                    layer_id_list.push(id);
-                    layer_data_amount.push(num);
+                function addIdTolist(id, num) {
+                    layerIdList.push(id);
+                    layerDataAmount.push(num);
                     cnt++;
                 }
 
-                function remove_all_layers() {
-                    for (var i = layer_id_list.length - 1; i >= 0 ; i--) {
-                        map.removeLayer(layer_id_list[i]);
+                function removeAllLayers() {
+                    for (var i = layerIdList.length - 1; i >= 0 ; i--) {
+                        map.removeLayer(layerIdList[i]);
 
                     }
-                    layer_id_list = [];
-                    layer_data_amount = [];
+                    layerIdList = [];
+                    layerDataAmount = [];
                     cnt = 0;
                 }
 
-                function removeLayer() {
-                    if (map.getLayer('layer') !== undefined) {
-                        map.removeLayer('layer');
-                    }
-                    if (map.getLayer('layer2') !== undefined) {
-                        map.removeLayer('layer2');
-                    }
-                }
-
                 function drawGraph() {
-                    // var fstart = performance.now();
-
-                    // removeLayer();
-                    if (cnt != 0) {
-                        remove_all_layers();
+                    if (cnt !== 0) {
+                        removeAllLayers();
                     }
-
                     query = document.getElementById("keyword-textbox").value;
-
-
                     var bounds = map.getBounds();
                     var ne = bounds.getNorthEast();
                     var sw = bounds.getSouthWest();
@@ -123,19 +108,22 @@
                     var sw_lng = sw.lng;
                     var sw_lat = sw.lat;
 
-                    let socket = new WebSocket("ws://localhost:9000/echo");
+                    let socket = new WebSocket("ws://localhost:9000/original");
 
                     socket.onopen = function (e) {
-                        socket.send(query + ' ' + sw_lng + ' ' + ne_lng + ' ' + sw_lat + ' ' + ne_lat);
+                        const sendingObj = {
+                            query: query, lowerLongitude: sw_lng, upperLongitude: ne_lng,
+                            lowerLatitude: sw_lat, upperLatitude: ne_lat
+                        };
+                        const sendingJSON = JSON.stringify(sendingObj);
+                        socket.send(sendingJSON);
                     };
 
                     socket.onmessage = function (event) {
-                        // var requestTimeStart = performance.now();
                         var meta = event.data;
                         var status = meta.charAt(0);
                         var date = meta.substring(1, 15);
                         var data = JSON.parse(meta.substring(15, meta.length));
-                        console.log(data);
                         const layer = new MapboxLayer({
                             id: 'line' + cnt,
                             type: LineLayer,
@@ -145,54 +133,31 @@
                             getStrokeWidth: d => Math.min(15, d.width * 2),
                             getColor: [177, 0, 38]
                         });
-                        add_id_2_list('line' + cnt, data.length);
+                        addIdTolist('line' + cnt, data.length);
                         map.addLayer(layer);
                         if (status === 'N') {
-                            socket.send(query + ' ' + sw_lng + ' ' + ne_lng + ' ' + sw_lat + ' ' + ne_lat + ' ' + date);
+                            const sendingObj = {
+                                query: query, lowerLongitude: sw_lng, upperLongitude: ne_lng,
+                                lowerLatitude: sw_lat, upperLatitude: ne_lat, date: date
+                            };
+                            const sendingJSON = JSON.stringify(sendingObj);
+                            socket.send(sendingJSON);
                         }
                     };
+                }
 
-                    // var request = new XMLHttpRequest();
-                    // request.open('GET', 'http://localhost:9000/replies?query=' + query + '&lowerLongitude=' + sw_lng + '&upperLongitude=' + ne_lng + '&lowerLatitude=' + sw_lat + '&upperLatitude=' + ne_lat, false);//for blocking
-                    // request.send(null);
-                    // if (request.status === 200) {
-                    //     var requestTimeStart = performance.now();
-                    //
-                    //     var data = JSON.parse(request.responseText);
-                    //     var parseTimeEnd = performance.now();
-                    //     const myArcLayer = new MapboxLayer({
-                    //         id: 'layer',
-                    //         type: LineLayer,
-                    //         data: data,
-                    //         getSourcePosition: d => d.source,
-                    //         getTargetPosition: d => d.target,
-                    //         getStrokeWidth: d => Math.min(15, d.width * 2),
-                    //         getColor: [177, 0, 38],
-                    //     });
-                    //
-                    //     map.addLayer(myArcLayer);
-                    //     var requestTimeEnd = performance.now();
-                    //
-                    // }
-                    // var fend = performance.now();
-                    // console.log("Time to render graph  " + (requestTimeEnd - parseTimeEnd) + " ms");
-                    // console.log("Time to parse JSON " + (parseTimeEnd - requestTimeStart) + " ms");
-                    // console.log("Total time of receiving data and finishing in deckGL is " + (requestTimeEnd-requestTimeStart) + " ms");
-                    // console.log("Total time of drawGraph() is " + (fend-fstart) + " ms");
-                };
-
-                function newGraph() {
-                    var fstart = performance.now();
-
-                    // if (cnt != 0) {
-                    //     remove_all_layers();
-                    // }
-                    if(map.getLayer('arc') != undefined){
+                function removeSingleLayer() {
+                    if(map.getLayer('arc') !== undefined){
                         map.removeLayer('arc');
                     }
+                }
 
+                function newGraph() {
+                    if (cnt !== 0) {
+                        removeAllLayers();
+                    }
+                    removeSingleLayer();
                     query = document.getElementById("keyword-textbox").value;
-
                     var bounds = map.getBounds();
                     var ne = bounds.getNorthEast();
                     var sw = bounds.getSouthWest();
@@ -203,20 +168,20 @@
 
                     let socket = new WebSocket("ws://localhost:9000/bundle");
                     socket.onopen = function (e) {
-                        socket.send(query + ' ' + sw_lng + ' ' + ne_lng + ' ' + sw_lat + ' ' + ne_lat);
+                        const sendingObj = {
+                            query: query, lowerLongitude: sw_lng, upperLongitude: ne_lng,
+                            lowerLatitude: sw_lat, upperLatitude: ne_lat
+                        };
+                        const sendingJSON = JSON.stringify(sendingObj);
+                        socket.send(sendingJSON);
                     };
 
                     socket.onmessage = function (event) {
-                        if(map.getLayer('arc') != undefined){
-                            map.removeLayer('arc');
-                        }
-                        var requestTimeStart = performance.now();
+                        removeSingleLayer();
                         var meta = event.data;
-                        console.log(meta);
                         var status = meta.charAt(0);
                         var date = meta.substring(1, 15);
                         var data = JSON.parse(meta.substring(15, meta.length));
-                        console.log(data);
                         const layer = new MapboxLayer({
                             id: 'arc',
                             type: LineLayer,
@@ -226,30 +191,16 @@
                             getStrokeWidth: d => Math.min(15, Math.ceil(Math.pow(d.width, 1 / 3))),
                             getColor: [177, 0, 38]
                         });
-                        // add_id_2_list('arc' + cnt, data.length);
                         map.addLayer(layer);
                         if (status === 'N') {
-                            socket.send(query + ' ' + sw_lng + ' ' + ne_lng + ' ' + sw_lat + ' ' + ne_lat + ' ' + date);
+                            const sendingObj = {
+                                query: query, lowerLongitude: sw_lng, upperLongitude: ne_lng,
+                                lowerLatitude: sw_lat, upperLatitude: ne_lat, date: date
+                            };
+                            const sendingJSON = JSON.stringify(sendingObj);
+                            socket.send(sendingJSON);
                         }
                     };
-                    // var request = new XMLHttpRequest();
-                    // request.open('GET', 'http://localhost:9000/query?query=' + query + '&lowerLongitude=' + sw_lng + '&upperLongitude=' + ne_lng + '&lowerLatitude=' + sw_lat + '&upperLatitude=' + ne_lat, false);//for blocking
-                    // request.send(null);
-                    // if (request.status === 200) {
-                    //     var requestTimeStart = performance.now();
-                    //     var data = JSON.parse(request.responseText);
-                    //     console.log(data);
-                    //     const layer = new MapboxLayer({
-                    //         id: 'layer2',
-                    //         type: LineLayer,
-                    //         data: data,
-                    //         getSourcePosition: d => d.from,
-                    //         getTargetPosition: d => d.to,
-                    //         getStrokeWidth: d => Math.min(15, Math.ceil(Math.pow(d.width, 1/3))),
-                    //         getColor: [177, 0, 38]
-                    //     });
-                    //     map.addLayer(layer);
-                    // }
                 }
         </script>
 
