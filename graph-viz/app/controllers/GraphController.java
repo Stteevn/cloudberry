@@ -1,12 +1,20 @@
 package controllers;
 
+import actors.BundleActor;
+import actors.EchoActor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import play.libs.Json;
 import play.mvc.*;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.sql.*;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -23,19 +31,80 @@ public class GraphController extends Controller {
      * <code>/</code>.
      */
 
-    public Result index(String query, double lowerLongitude, double upperLongitude, double lowerLatitude,
-                        double upperLatitude) {
+    static ThreadLocal<ArrayList<Vector>> alldataNodes;
+    static ThreadLocal<ArrayList<EdgeVector>> alldataEdges;
+    static ThreadLocal<ArrayList<Integer>> allcloseEdgeList;
+    static ThreadLocal<Hashtable<Integer, Edge>> edges;
+    private File configFile = new File("./conf/config.properties");
+    private Properties configProps;
+
+    public void index(String query, EchoActor echoActor) {
+        String[] messageAssembler = query.split(" ");
+        String endDate = "";
+        query = messageAssembler[0];
+        double lowerLongitude = Double.parseDouble(messageAssembler[1]);
+        double upperLongitude = Double.parseDouble(messageAssembler[2]);
+        double lowerLatitude = Double.parseDouble(messageAssembler[3]);
+        double upperLatitude = Double.parseDouble(messageAssembler[4]);
+        if (messageAssembler.length == 6) {
+            endDate = messageAssembler[5];
+        }
+        else {
+            alldataNodes = ThreadLocal.withInitial(ArrayList::new);
+            alldataEdges = ThreadLocal.withInitial(ArrayList::new);
+            allcloseEdgeList = ThreadLocal.withInitial(ArrayList::new);
+            edges = ThreadLocal.withInitial(Hashtable::new);
+        }
+        String firstDate = null;
+        String lastDate = null;
+        int queryPeriod = 0;
         String json = "";
+        String dt_ret = "";
         long startIndex = System.currentTimeMillis();
+
+        try {
+            loadProperties();
+            firstDate = configProps.getProperty("firstDate");
+            lastDate = configProps.getProperty("lastDate");
+            queryPeriod = Integer.parseInt(configProps.getProperty("queryPeriod"));
+        } catch (IOException ex) {
+            System.out.println("The config.properties file does not exist, default properties loaded.");
+        }
+
         try {
             Class.forName("org.postgresql.Driver");
             Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/graphtweet", "graphuser",
                     "graphuser");
+
+            // compute the start date and end date of each sub_query
+            String dt;
+            if (endDate.equals("")) {
+                dt = firstDate;  // Start date
+            } else {
+                dt = endDate;
+            }
+
+//            System.out.println(dt);
+            String start = dt;
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
+            Calendar c = Calendar.getInstance();
+            c.setTime(sdf.parse(dt));
+            c.add(Calendar.HOUR, queryPeriod);  // number of days to add
+            dt = sdf.format(c.getTime());  // dt is now the new date
+            String end = dt;
+
+            // compute the return string as: Y/N + end date of each sub_query
+            String str_stop = lastDate;
+            Calendar cal_stop = Calendar.getInstance();
+            cal_stop.setTime(sdf.parse(str_stop));
+
             String searchQuery = "select " + "from_longitude, from_latitude, " + "to_longitude, to_latitude "
                     + "from replytweets where (" + "to_tsvector('english', from_text) " + "@@ to_tsquery( ? ) or "
                     + "to_tsvector('english', to_text) "
                     + "@@ to_tsquery( ? )) and ((from_longitude between ? AND ? AND from_latitude between ? AND ?) OR"
-                    + " (to_longitude between ? AND ? AND to_latitude between ? AND ?));";
+                    + " (to_longitude between ? AND ? AND to_latitude between ? AND ?)) "
+                    + "AND to_create_at::timestamp > TO_TIMESTAMP('" + start + "', 'yyyymmddhh24miss') "
+                    + "AND to_create_at::timestamp <= TO_TIMESTAMP('" + end + "', 'yyyymmddhh24miss');";
 
             PreparedStatement state = conn.prepareStatement(searchQuery);
             state.setString(1, query);
@@ -65,40 +134,64 @@ public class GraphController extends Controller {
             objectMapper.registerModule(module);
             json = objectMapper.writeValueAsString(edges);
             long endIndex = System.currentTimeMillis();
+
+            if (!c.before(cal_stop)) {
+//                System.out.println("Y" + dt);
+                dt_ret = "Y" + dt;
+            } else {
+//                System.out.println("N" + dt);
+                dt_ret = "N" + dt;
+            }
+
             resultSet.close();
             state.close();
             conn.close();
-            System.out.println(json);
-            System.out.println("Total time in parsing data from Json is " + (endIndex - startParse) + " ms");
-            System.out.println("Total time in executing query in database is " + (startParse - startIndex) + " ms");
-            System.out.println("Total time in running index() is " + (endIndex - startIndex) + " ms");
-            System.out.println("Total number of records " + edges.size());
+//            System.out.println(json);
+//            System.out.println("Total time in parsing data from Json is " + (endIndex - startParse) + " ms");
+//            System.out.println("Total time in executing query in database is " + (startParse - startIndex) + " ms");
+//            System.out.println("Total time in running index() is " + (endIndex - startIndex) + " ms");
+//            System.out.println("Total number of records " + edges.size());
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
-        return ok(json);
+        echoActor.returnData(dt_ret + json);
     }
 
-    public Result reply(String query, double lowerLongitude, double upperLongitude, double lowerLatitude,
-                        double upperLatitude) {
+    public void reply(String query, BundleActor bundleActor) {
+        String[] messageAssembler = query.split(" ");
+        String endDate = "";
+        query = messageAssembler[0];
+        double lowerLongitude = Double.parseDouble(messageAssembler[1]);
+        double upperLongitude = Double.parseDouble(messageAssembler[2]);
+        double lowerLatitude = Double.parseDouble(messageAssembler[3]);
+        double upperLatitude = Double.parseDouble(messageAssembler[4]);
+        if (messageAssembler.length == 6) {
+            endDate = messageAssembler[5];
+        }
+        else {
+            alldataNodes = ThreadLocal.withInitial(ArrayList::new);
+            alldataEdges = ThreadLocal.withInitial(ArrayList::new);
+            allcloseEdgeList = ThreadLocal.withInitial(ArrayList::new);
+            edges = ThreadLocal.withInitial(Hashtable::new);
+        }
         String json = "";
         long startReply = System.currentTimeMillis();
+        String dt_ret = "";
         try {
             Edge.set_epsilon(9);
-            HashMap<Integer, Edge> edges = queryResult(query, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude);
-
+            dt_ret = queryResult(query, endDate, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude);
             long startBundling = System.currentTimeMillis();
-            ArrayList<Vector> dataNodes = new ArrayList<>();
-            ArrayList<EdgeVector> dataEdges = new ArrayList<>();
-            ArrayList<Integer> closeEdgeList = new ArrayList<>();
+//            ArrayList<Vector> dataNodes = new ArrayList<>();
+//            ArrayList<EdgeVector> dataEdges = new ArrayList<>();
+//            ArrayList<Integer> closeEdgeList = new ArrayList<>();
 
-            for (Map.Entry<Integer, Edge> entry : edges.entrySet()) {
-                closeEdgeList.add(entry.getValue().getWeight());
-                dataNodes.add(new Vector(entry.getValue().getFromLongitude(), entry.getValue().getFromLatitude()));
-                dataNodes.add(new Vector(entry.getValue().getToLongitude(), entry.getValue().getToLatitude()));
-                dataEdges.add(new EdgeVector(dataNodes.size() - 2, dataNodes.size() - 1));
+            for (Map.Entry<Integer, Edge> entry : edges.get().entrySet()) {
+                allcloseEdgeList.get().add(entry.getValue().getWeight());
+                alldataNodes.get().add(new Vector(entry.getValue().getFromLongitude(), entry.getValue().getFromLatitude()));
+                alldataNodes.get().add(new Vector(entry.getValue().getToLongitude(), entry.getValue().getToLatitude()));
+                alldataEdges.get().add(new EdgeVector(alldataNodes.get().size() - 2, alldataNodes.get().size() - 1));
             }
-            ForceBundling forceBundling = new ForceBundling(dataNodes, dataEdges);
+            ForceBundling forceBundling = new ForceBundling(alldataNodes.get(), alldataEdges.get());
             ArrayList<Path> pathResult = forceBundling.forceBundle();
             ObjectMapper objectMapper = new ObjectMapper();
             ArrayNode pathJson = objectMapper.createArrayNode();
@@ -115,7 +208,7 @@ public class GraphController extends Controller {
                     toArray.add(path.alv.get(j + 1).y);
                     lineNode.putArray("from").addAll(fromArray);
                     lineNode.putArray("to").addAll(toArray);
-                    lineNode.put("width", closeEdgeList.get(edgeNum));
+                    lineNode.put("width", allcloseEdgeList.get().get(edgeNum));
                     pathJson.add(lineNode);
                 }
                 edgeNum++;
@@ -126,28 +219,67 @@ public class GraphController extends Controller {
             System.out.println("Total time in executing query in database is " + (startBundling - startReply) + " ms");
             System.out.println("Total time in edge bundling is " + (startParse - startBundling) + " ms");
             System.out.println("Total time in running replay() is " + (endReply - startReply) + " ms");
-            System.out.println("Total number of records " + edges.size());
+            System.out.println("Total number of records " + edges.get().size());
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
-        return ok(json);
+        bundleActor.returnData(dt_ret + json);
     }
 
-    private HashMap<Integer, Edge> queryResult(String query, double lowerLongitude, double upperLongitude, double lowerLatitude,
+    private String queryResult(String query, String endDate, double lowerLongitude, double upperLongitude, double lowerLatitude,
                                                double upperLatitude) {
         Connection conn;
         PreparedStatement state;
         ResultSet resultSet;
-        HashMap<Integer, Edge> edges = new HashMap<>();
+
+        String firstDate = null;
+        String lastDate = null;
+        int queryPeriod = 0;
+        String dt_ret = "";
+
+        try {
+            loadProperties();
+            firstDate = configProps.getProperty("firstDate");
+            lastDate = configProps.getProperty("lastDate");
+            queryPeriod = Integer.parseInt(configProps.getProperty("queryPeriod"));
+        } catch (IOException ex) {
+            System.out.println("The config.properties file does not exist, default properties loaded.");
+        }
+
         try {
             Class.forName("org.postgresql.Driver");
             conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/graphtweet", "graphuser",
                     "graphuser");
+
+            // compute the start date and end date of each sub_query
+            String dt;
+            if (endDate.equals("")) {
+                dt = firstDate;  // Start date
+            } else {
+                dt = endDate;
+            }
+
+            System.out.println(dt);
+            String start = dt;
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
+            Calendar c = Calendar.getInstance();
+            c.setTime(sdf.parse(dt));
+            c.add(Calendar.HOUR, queryPeriod);  // number of days to add
+            dt = sdf.format(c.getTime());  // dt is now the new date
+            String end = dt;
+
+            // compute the return string as: Y/N + end date of each sub_query
+            String str_stop = lastDate;
+            Calendar cal_stop = Calendar.getInstance();
+            cal_stop.setTime(sdf.parse(str_stop));
+
             String searchQuery = "select " + "from_longitude, from_latitude, " + "to_longitude, to_latitude "
                     + "from replytweets where (" + "to_tsvector('english', from_text) " + "@@ to_tsquery( ? ) or "
                     + "to_tsvector('english', to_text) "
                     + "@@ to_tsquery( ? )) and ((from_longitude between ? AND ? AND from_latitude between ? AND ?) OR"
-                    + " (to_longitude between ? AND ? AND to_latitude between ? AND ?)) AND sqrt(pow(from_latitude - to_latitude, 2) + pow(from_longitude - to_longitude, 2)) >= ?;";
+                    + " (to_longitude between ? AND ? AND to_latitude between ? AND ?)) AND sqrt(pow(from_latitude - to_latitude, 2) + pow(from_longitude - to_longitude, 2)) >= ? "
+                    + "AND to_create_at::timestamp > TO_TIMESTAMP('" + start + "', 'yyyymmddhh24miss') "
+                    + "AND to_create_at::timestamp <= TO_TIMESTAMP('" + end + "', 'yyyymmddhh24miss');";
             state = conn.prepareStatement(searchQuery);
             state.setString(1, query);
             state.setString(2, query);
@@ -169,20 +301,44 @@ public class GraphController extends Controller {
                 double toLatitude = resultSet.getDouble("to_latitude");
 
                 Edge currentEdge = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude, 1);
-                if (edges.containsKey(currentEdge.getBlock())) {
-                    Edge oldEdge = edges.get(currentEdge.getBlock());
-                    edges.remove(currentEdge.getBlock());
-                    edges.put(currentEdge.getBlock(), oldEdge.updateWeight(1));
+                if (edges.get().containsKey(currentEdge.getBlock())) {
+                    Edge oldEdge = edges.get().get(currentEdge.getBlock());
+                    edges.get().remove(currentEdge.getBlock());
+                    edges.get().put(currentEdge.getBlock(), oldEdge.updateWeight(1));
                 } else {
-                    edges.put(currentEdge.getBlock(), currentEdge);
+                    edges.get().put(currentEdge.getBlock(), currentEdge);
                 }
             }
+
+            if (!c.before(cal_stop)) {
+                System.out.println("Y" + dt);
+                dt_ret = "Y" + dt;
+            } else {
+                System.out.println("N" + dt);
+                dt_ret = "N" + dt;
+            }
+
             resultSet.close();
             state.close();
             conn.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return edges;
+        return dt_ret;
+    }
+
+    private void loadProperties() throws IOException {
+        Properties defaultProps = new Properties();
+        // sets default properties
+        defaultProps.setProperty("firstDate", "20180101");
+        defaultProps.setProperty("lastDate", "20181231");
+        defaultProps.setProperty("queryPeriod", "10");
+
+        configProps = new Properties(defaultProps);
+
+        // loads properties from file
+        InputStream inputStream = new FileInputStream(configFile);
+        configProps.load(inputStream);
+        inputStream.close();
     }
 }

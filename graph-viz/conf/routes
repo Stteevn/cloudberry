@@ -4,9 +4,10 @@
 
 # An example controller showing a sample home page
 GET     /                           controllers.HomeController.index
-
+GET     /echo                       controllers.EchoController.socket
+GET     /bundle                     controllers.BundleController.socket
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
-GET     /replies                    controllers.GraphController.index(query: String ?= "", lowerLongitude: Double, upperLongitude: Double, lowerLatitude: Double, upperLatitude: Double)
-GET     /query                      controllers.GraphController.reply(query: String ?= "", lowerLongitude: Double, upperLongitude: Double, lowerLatitude: Double, upperLatitude: Double)
+#GET     /replies                    controllers.GraphController.index(query: String ?= "", endDate: String ?= "")
+#GET     /query                      controllers.GraphController.reply(query: String ?= "", lowerLongitude: Double, upperLongitude: Double, lowerLatitude: Double, upperLatitude: Double)
