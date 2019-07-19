@@ -4,7 +4,6 @@
 
 # An example controller showing a sample home page
 GET     /                           controllers.HomeController.index
-GET     /original                   controllers.EdgeController.original
 GET     /bundle                     controllers.EdgeController.bundle
 
 # Map static resources from the /public folder to the /assets URL path

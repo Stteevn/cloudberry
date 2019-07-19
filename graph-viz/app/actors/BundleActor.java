@@ -22,7 +22,7 @@ public class BundleActor extends AbstractActor {
     @Override
     public Receive createReceive() {
         return receiveBuilder()
-                .match(String.class, message -> graphController.reply(message, this))
+                .match(String.class, message -> graphController.bundle(message, this))
                 .build();
     }
 

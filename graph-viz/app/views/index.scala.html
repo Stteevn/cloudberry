@@ -47,11 +47,8 @@
                     <input type="text" style="width: 40%"
                     class="form-control col-sm-4 ng-pristine ng-untouched ng-empty ng-invalid ng-invalid-required"
                     id="keyword-textbox" placeholder="Search keywords e.g hurricane">
-                    <div class="col-sm-1"></div><span class="col-sm-1 input-group-btn">
-                    <button type="submit" onclick="drawGraph()" class=" btn btn-primary" id="submit-button">
-                        Submit</button></span>
                     <div class="col-sm-1"></div>
-                    <button type="submit" onclick="newGraph()" class=" btn btn-primary" id="button">Bundling</button></span>
+                    <button type="submit" onclick="bundleGraph()" class=" btn btn-primary" id="button">Bundling</button></span>
                 </div>
             </div>
         </body>
@@ -75,87 +72,13 @@
                 });
                 var query = "";
 
-                var layerIdList = [];
-                var layerDataAmount = [];
-                var cnt = 0;
-
-                function addIdTolist(id, num) {
-                    layerIdList.push(id);
-                    layerDataAmount.push(num);
-                    cnt++;
-                }
-
-                function removeAllLayers() {
-                    for (var i = layerIdList.length - 1; i >= 0 ; i--) {
-                        map.removeLayer(layerIdList[i]);
-
-                    }
-                    layerIdList = [];
-                    layerDataAmount = [];
-                    cnt = 0;
-                }
-
-                function drawGraph() {
-                    if (cnt !== 0) {
-                        removeAllLayers();
-                    }
-                    query = document.getElementById("keyword-textbox").value;
-                    var bounds = map.getBounds();
-                    var ne = bounds.getNorthEast();
-                    var sw = bounds.getSouthWest();
-                    var ne_lng = ne.lng;
-                    var ne_lat = ne.lat;
-                    var sw_lng = sw.lng;
-                    var sw_lat = sw.lat;
-
-                    let socket = new WebSocket("ws://localhost:9000/original");
-
-                    socket.onopen = function (e) {
-                        const sendingObj = {
-                            query: query, lowerLongitude: sw_lng, upperLongitude: ne_lng,
-                            lowerLatitude: sw_lat, upperLatitude: ne_lat
-                        };
-                        const sendingJSON = JSON.stringify(sendingObj);
-                        socket.send(sendingJSON);
-                    };
-
-                    socket.onmessage = function (event) {
-                        var meta = event.data;
-                        var status = meta.charAt(0);
-                        var date = meta.substring(1, 15);
-                        var data = JSON.parse(meta.substring(15, meta.length));
-                        const layer = new MapboxLayer({
-                            id: 'line' + cnt,
-                            type: LineLayer,
-                            data: data,
-                            getSourcePosition: d => d.source,
-                            getTargetPosition: d => d.target,
-                            getStrokeWidth: d => Math.min(15, d.width * 2),
-                            getColor: [177, 0, 38]
-                        });
-                        addIdTolist('line' + cnt, data.length);
-                        map.addLayer(layer);
-                        if (status === 'N') {
-                            const sendingObj = {
-                                query: query, lowerLongitude: sw_lng, upperLongitude: ne_lng,
-                                lowerLatitude: sw_lat, upperLatitude: ne_lat, date: date
-                            };
-                            const sendingJSON = JSON.stringify(sendingObj);
-                            socket.send(sendingJSON);
-                        }
-                    };
-                }
-
                 function removeSingleLayer() {
                     if(map.getLayer('arc') !== undefined){
                         map.removeLayer('arc');
                     }
                 }
 
-                function newGraph() {
-                    if (cnt !== 0) {
-                        removeAllLayers();
-                    }
+                function bundleGraph() {
                     removeSingleLayer();
                     query = document.getElementById("keyword-textbox").value;
                     var bounds = map.getBounds();
@@ -179,9 +102,10 @@
                     socket.onmessage = function (event) {
                         removeSingleLayer();
                         var meta = event.data;
-                        var status = meta.charAt(0);
-                        var date = meta.substring(1, 15);
-                        var data = JSON.parse(meta.substring(15, meta.length));
+                        var json = JSON.parse(meta);
+                        var status = json['flag'];
+                        var date = json['date'];
+                        var data = json['data'];
                         const layer = new MapboxLayer({
                             id: 'arc',
                             type: LineLayer,

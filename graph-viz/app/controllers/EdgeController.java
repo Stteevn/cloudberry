@@ -1,7 +1,6 @@
 package controllers;
 
 import actors.BundleActor;
-import actors.OriginalActor;
 import akka.actor.ActorSystem;
 import akka.stream.Materializer;
 import play.libs.streams.ActorFlow;
@@ -19,11 +18,6 @@ public class EdgeController extends Controller {
     public EdgeController(ActorSystem actorSystem, Materializer materializer) {
         this.actorSystem = actorSystem;
         this.materializer = materializer;
-    }
-
-    public WebSocket original() {
-        return WebSocket.Text.accept(
-                request -> ActorFlow.actorRef(OriginalActor::props, actorSystem, materializer));
     }
 
     public WebSocket bundle() {
