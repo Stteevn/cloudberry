@@ -38,6 +38,11 @@ public class ForceBundling {
     ArrayList<EdgeVector> dataEdges;
     ArrayList<Path> subdivisionPoints = new ArrayList<>();
     ArrayList<ArrayList<Integer>> compatibilityList = new ArrayList<>();
+    ArrayList<ArrayList<Double>> edgeDistances = new ArrayList<>();
+    ArrayList<Double> edgeLengths = new ArrayList<>();
+    final double radius_limit = 10;
+    final double length_limit = 7;
+    final int close_cnt_limit = 10;
     final double K = 0.1;
     final double S_initial = 0.3;
     final int P_initial = 1;
@@ -263,10 +268,66 @@ public class ForceBundling {
         }
     }
 
+    void deleteShortEdges() {
+        ArrayList<Boolean> success = new ArrayList<>();
+        for (int e = 0; e < dataEdges.size(); e++) {
+            success.add(false);
+        }
+        for (int e = 0; e < dataEdges.size(); e++) {
+            edgeDistances.add(new ArrayList<>());
+        }
+        for (int e = 0; e < dataEdges.size(); e++) {
+            edgeLengths.add(edgeLength(dataEdges.get(e)));
+        }
+        for (int e = 0; e < dataEdges.size() - 1; e++) {
+            edgeDistances.get(e).add(0.0);
+            for (int oe = e + 1; oe < dataEdges.size(); oe++) {
+                Vector midE = new Vector(
+                        (dataNodes.get(dataEdges.get(e).sourceNodeInd).x + dataNodes.get(dataEdges.get(e).targetNodeInd).x) / 2.0,
+                        (dataNodes.get(dataEdges.get(e).sourceNodeInd).y + dataNodes.get(dataEdges.get(e).targetNodeInd).y) / 2.0
+                );
+                Vector midOE = new Vector(
+                        (dataNodes.get(dataEdges.get(oe).sourceNodeInd).x + dataNodes.get(dataEdges.get(oe).targetNodeInd).x) / 2.0,
+                        (dataNodes.get(dataEdges.get(oe).sourceNodeInd).y + dataNodes.get(dataEdges.get(oe).targetNodeInd).y) / 2.0
+                );
+                double dis = euclideanDistance(midE, midOE);
+                edgeDistances.get(e).add(dis);
+                edgeDistances.get(oe).add(dis);
+            }
+        }
+        for (int e = 0; e < dataEdges.size(); e++) {
+            int nearEdgesCnt = 0;
+            if (edgeLengths.get(e) > length_limit) {
+                continue;
+            }
+            for (int oe = 0; oe < dataEdges.size(); oe++) {
+                if (e == oe) {
+                    continue;
+                }
+                if (edgeLengths.get(oe) > length_limit && edgeDistances.get(e).get(oe) < radius_limit) {
+                    nearEdgesCnt++;
+                }
+            }
+            if (nearEdgesCnt > close_cnt_limit) {
+                success.set(e, true);
+            }
+        }
+        int deleted = 0;
+        for (int e = 0; e < dataEdges.size() - 1; e++) {
+            if (success.get(e)) {
+//                System.out.println("delete_length " + edgeLengths.get(e));
+                deleted++;
+                dataEdges.remove(e);
+            }
+        }
+        System.out.println("deleted: " + deleted);
+    }
+
     ArrayList<Path> forceBundle() {
         double S = S_initial;
         double I = I_initial;
         int P = P_initial;
+//        deleteShortEdges();
         initializeEdgeSubdivisions();
         initializeCompatibilityLists();
         updateEdgeDivisions(P);

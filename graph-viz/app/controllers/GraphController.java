@@ -29,9 +29,6 @@ public class GraphController extends Controller {
      * <code>/</code>.
      */
 
-    private static ArrayList<Vector> alldataNodes;
-    private static ArrayList<EdgeVector> alldataEdges;
-    private static ArrayList<Integer> weights;
     private static Hashtable<Integer, Edge> edges;
     // configuration file
     private File configFile = new File("./conf/config.properties");
@@ -59,9 +56,6 @@ public class GraphController extends Controller {
         if (jsonNode.has("date")) {
             endDate = jsonNode.get("date").asText();
         }else{
-            alldataNodes = new ArrayList<>();
-            alldataEdges = new ArrayList<>();
-            weights = new ArrayList<>();
             edges = new Hashtable<>();
         }
         String json = "";
@@ -71,14 +65,19 @@ public class GraphController extends Controller {
             Edge.set_epsilon(9);
             objectNode = queryResult(query, endDate, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, objectNode);
             long startBundling = System.currentTimeMillis();
+            ArrayList<Vector> alldataNodes = new ArrayList<>();
+            ArrayList<EdgeVector> alldataEdges = new ArrayList<>();
+            ArrayList<Integer> weights = new ArrayList<>();
             for (Map.Entry<Integer, Edge> entry : edges.entrySet()) {
                 weights.add(entry.getValue().getWeight());
                 alldataNodes.add(new Vector(entry.getValue().getFromLongitude(), entry.getValue().getFromLatitude()));
                 alldataNodes.add(new Vector(entry.getValue().getToLongitude(), entry.getValue().getToLatitude()));
                 alldataEdges.add(new EdgeVector(alldataNodes.size() - 2, alldataNodes.size() - 1));
             }
+            long realStartBundling = System.currentTimeMillis();
             ForceBundling forceBundling = new ForceBundling(alldataNodes, alldataEdges);
             ArrayList<Path> pathResult = forceBundling.forceBundle();
+            System.out.println("real bundling time is: " + (System.currentTimeMillis() - realStartBundling));
             objectMapper = new ObjectMapper();
             ArrayNode pathJson = objectMapper.createArrayNode();
             long startParse = System.currentTimeMillis();
@@ -107,6 +106,8 @@ public class GraphController extends Controller {
             System.out.println("Total time in edge bundling is " + (startParse - startBundling) + " ms");
             System.out.println("Total time in running replay() is " + (endReply - startReply) + " ms");
             System.out.println("Total number of records " + edges.size());
+            System.out.println("Total number of nodes " + alldataNodes.size());
+            System.out.println("Total number of edges " + alldataEdges.size());
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }

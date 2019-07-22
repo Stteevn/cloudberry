@@ -89,7 +89,7 @@
                     var sw_lng = sw.lng;
                     var sw_lat = sw.lat;
 
-                    let socket = new WebSocket("ws://localhost:9000/bundle");
+                    let socket = new WebSocket("ws://169.234.17.127:9000/bundle");
                     socket.onopen = function (e) {
                         const sendingObj = {
                             query: query, lowerLongitude: sw_lng, upperLongitude: ne_lng,
@@ -100,12 +100,13 @@
                     };
 
                     socket.onmessage = function (event) {
-                        removeSingleLayer();
+
                         var meta = event.data;
                         var json = JSON.parse(meta);
                         var status = json['flag'];
                         var date = json['date'];
                         var data = json['data'];
+                        removeSingleLayer();
                         const layer = new MapboxLayer({
                             id: 'arc',
                             type: LineLayer,
