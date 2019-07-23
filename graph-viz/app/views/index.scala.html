@@ -124,7 +124,7 @@
                     };
 
                     socket.onmessage = function (event) {
-                        removeSingleLayer();
+
                         var meta = event.data;
                         console.log(meta);
                         var json = JSON.parse(meta);
