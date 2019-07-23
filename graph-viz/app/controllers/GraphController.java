@@ -32,6 +32,7 @@ public class GraphController extends Controller {
      */
 
     private static Hashtable<Integer, Edge> edges;
+    private static ArrayList<Edge> allEdges;
     // configuration file
     private File configFile = new File("./conf/config.properties");
     private Properties configProps;
@@ -59,8 +60,10 @@ public class GraphController extends Controller {
         if (jsonNode.has("date")) {
             endDate = jsonNode.get("date").asText();
             edges = new Hashtable<>();
+            allEdges = new ArrayList<>();
         }else {
             edges = new Hashtable<>();
+            allEdges = new ArrayList<>();
         }
         String json = "";
         long startReply = System.currentTimeMillis();
@@ -78,10 +81,14 @@ public class GraphController extends Controller {
                 alldataNodes.add(fb.centerR);
                 alldataEdges.add(new EdgeVector(alldataNodes.size() - 2, alldataNodes.size() - 1));
             }
-            for (Map.Entry<Integer, Edge> entry : edges.entrySet()) {
-                weights.add(entry.getValue().getWeight());
-                alldataNodes.add(new Vector(entry.getValue().getFromLongitude(), entry.getValue().getFromLatitude()));
-                alldataNodes.add(new Vector(entry.getValue().getToLongitude(), entry.getValue().getToLatitude()));
+//            for (Map.Entry<Integer, Edge> entry : edges.entrySet()) {
+            for (Edge entry : allEdges) {
+//                weights.add(entry.getValue().getWeight());
+//                alldataNodes.add(new Vector(entry.getValue().getFromLongitude(), entry.getValue().getFromLatitude()));
+//                alldataNodes.add(new Vector(entry.getValue().getToLongitude(), entry.getValue().getToLatitude()));
+                weights.add(entry.getWeight());
+                alldataNodes.add(new Vector(entry.getFromLongitude(), entry.getFromLatitude()));
+                alldataNodes.add(new Vector(entry.getToLongitude(), entry.getToLatitude()));
                 alldataEdges.add(new EdgeVector(alldataNodes.size() - 2, alldataNodes.size() - 1));
             }
             ForceBundling forceBundling;
@@ -121,6 +128,7 @@ public class GraphController extends Controller {
             System.out.println("Total time in edge bundling is " + (startParse - startBundling) + " ms");
             System.out.println("Total time in running replay() is " + (endReply - startReply) + " ms");
             System.out.println("Total number of records " + edges.size());
+            System.out.println("Total number of edges " + alldataEdges.size());
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -203,13 +211,14 @@ public class GraphController extends Controller {
                 double toLatitude = resultSet.getDouble("to_latitude");
 
                 Edge currentEdge = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude, 1);
-                if (edges.containsKey(currentEdge.getBlock())) {
-                    Edge oldEdge = edges.get(currentEdge.getBlock());
-                    edges.remove(currentEdge.getBlock());
-                    edges.put(currentEdge.getBlock(), oldEdge.updateWeight(1));
-                } else {
-                    edges.put(currentEdge.getBlock(), currentEdge);
-                }
+//                if (edges.containsKey(currentEdge.getBlock())) {
+//                    Edge oldEdge = edges.get(currentEdge.getBlock());
+//                    edges.remove(currentEdge.getBlock());
+//                    edges.put(currentEdge.getBlock(), oldEdge.updateWeight(1));
+//                } else {
+//                    edges.put(currentEdge.getBlock(), currentEdge);
+//                }
+                allEdges.add(currentEdge);
             }
             resultSet.close();
             state.close();

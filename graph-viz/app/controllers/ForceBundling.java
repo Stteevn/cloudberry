@@ -177,7 +177,7 @@ public class ForceBundling {
         Vector sumOfForces = new Vector(0, 0);
         ArrayList<Integer> compatibleEdgeList = compatibilityList.get(e_ind);
         if(e_ind == 0) {
-            weightApplyElectrostaticForce(this.length * 10000, e_ind, i, sumOfForces, compatibleEdgeList);
+            weightApplyElectrostaticForce(this.length * 1000000000, e_ind, i, sumOfForces, compatibleEdgeList);
         }else{
             weightApplyElectrostaticForce(1, e_ind, i, sumOfForces, compatibleEdgeList);
         }
