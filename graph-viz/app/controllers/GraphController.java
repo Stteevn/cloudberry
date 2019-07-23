@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.checkerframework.checker.units.qual.A;
+import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 import play.mvc.*;
 import java.io.File;
 import java.io.FileInputStream;
@@ -29,9 +31,6 @@ public class GraphController extends Controller {
      * <code>/</code>.
      */
 
-    private static ArrayList<Vector> alldataNodes;
-    private static ArrayList<EdgeVector> alldataEdges;
-    private static ArrayList<Integer> weights;
     private static Hashtable<Integer, Edge> edges;
     // configuration file
     private File configFile = new File("./conf/config.properties");
@@ -40,6 +39,7 @@ public class GraphController extends Controller {
     private static final String finished = "Y";
     // indicates the sending process is not completed
     private static final String unfinished = "N";
+    private static ForceBundling fb;
 
     public void bundle(String query, BundleActor bundleActor) {
         // parse the json and initialize the variables
@@ -58,10 +58,8 @@ public class GraphController extends Controller {
         String endDate = null;
         if (jsonNode.has("date")) {
             endDate = jsonNode.get("date").asText();
-        }else{
-            alldataNodes = new ArrayList<>();
-            alldataEdges = new ArrayList<>();
-            weights = new ArrayList<>();
+            edges = new Hashtable<>();
+        }else {
             edges = new Hashtable<>();
         }
         String json = "";
@@ -71,14 +69,29 @@ public class GraphController extends Controller {
             Edge.set_epsilon(9);
             objectNode = queryResult(query, endDate, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, objectNode);
             long startBundling = System.currentTimeMillis();
+            ArrayList<Vector> alldataNodes = new ArrayList<>();
+            ArrayList<EdgeVector> alldataEdges = new ArrayList<>();
+            ArrayList<Integer> weights = new ArrayList<>();
+            if(fb != null){
+                weights.add(0);
+                alldataNodes.add(fb.centerL);
+                alldataNodes.add(fb.centerR);
+                alldataEdges.add(new EdgeVector(alldataNodes.size() - 2, alldataNodes.size() - 1));
+            }
             for (Map.Entry<Integer, Edge> entry : edges.entrySet()) {
                 weights.add(entry.getValue().getWeight());
                 alldataNodes.add(new Vector(entry.getValue().getFromLongitude(), entry.getValue().getFromLatitude()));
                 alldataNodes.add(new Vector(entry.getValue().getToLongitude(), entry.getValue().getToLatitude()));
                 alldataEdges.add(new EdgeVector(alldataNodes.size() - 2, alldataNodes.size() - 1));
             }
-            ForceBundling forceBundling = new ForceBundling(alldataNodes, alldataEdges);
-            ArrayList<Path> pathResult = forceBundling.forceBundle();
+            ForceBundling forceBundling;
+            if(fb == null){
+                forceBundling = new ForceBundling(alldataNodes, alldataEdges);
+            }else {
+                forceBundling = new ForceBundling(alldataNodes, alldataEdges, fb.centerL, fb.centerR, fb.length);
+            }
+            fb = forceBundling.forceBundle();
+            ArrayList<Path> pathResult = fb.subdivisionPoints;
             objectMapper = new ObjectMapper();
             ArrayNode pathJson = objectMapper.createArrayNode();
             long startParse = System.currentTimeMillis();
@@ -101,6 +114,7 @@ public class GraphController extends Controller {
             }
             objectNode.set("data", pathJson);
             json = objectNode.toString();
+            System.out.println(json);
             long endReply = System.currentTimeMillis();
             System.out.println("Total time in parsing data from Json is " + (endReply - startParse) + " ms");
             System.out.println("Total time in executing query in database is " + (startBundling - startReply) + " ms");

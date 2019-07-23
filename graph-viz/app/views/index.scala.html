@@ -61,6 +61,8 @@
         <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.50.0/mapbox-gl.css' rel='stylesheet' />
 
         <script>
+                const {MapboxLayer} = deck;
+
                 mapboxgl.accessToken = 'pk.eyJ1IjoiamVyZW15bGkiLCJhIjoiY2lrZ2U4MWI4MDA4bHVjajc1am1weTM2aSJ9.JHiBmawEKGsn3jiRK_d0Gw';
                 const map = new mapboxgl.Map({
                     container: 'map',
@@ -72,6 +74,23 @@
                 });
                 var query = "";
 
+                var layer_id_list = [];
+                var layer_data_amount = [];
+                var cnt = 0;
+                function add_id_2_list(id, num) {
+                    layer_id_list.push(id);
+                    layer_data_amount.push(num);
+                    cnt++;
+                }
+                function remove_all_layers() {
+                    for (var i = layer_id_list.length - 1; i >= 0 ; i--) {
+                        map.removeLayer(layer_id_list[i]);
+                    }
+                    layer_id_list = [];
+                    layer_data_amount = [];
+                    cnt = 0;
+                }
+
                 function removeSingleLayer() {
                     if(map.getLayer('arc') !== undefined){
                         map.removeLayer('arc');
@@ -79,7 +98,12 @@
                 }
 
                 function bundleGraph() {
-                    removeSingleLayer();
+                    // removeSingleLayer();
+
+                    if (cnt != 0) {
+                        remove_all_layers();
+                    }
+
                     query = document.getElementById("keyword-textbox").value;
                     var bounds = map.getBounds();
                     var ne = bounds.getNorthEast();
@@ -102,12 +126,15 @@
                     socket.onmessage = function (event) {
                         removeSingleLayer();
                         var meta = event.data;
+                        console.log(meta);
                         var json = JSON.parse(meta);
                         var status = json['flag'];
+                        console.log(status);
                         var date = json['date'];
                         var data = json['data'];
+                        console.log(data);
                         const layer = new MapboxLayer({
-                            id: 'arc',
+                            id: 'arc' + cnt,
                             type: LineLayer,
                             data: data,
                             getSourcePosition: d => d.from,
@@ -115,8 +142,10 @@
                             getStrokeWidth: d => Math.min(15, Math.ceil(Math.pow(d.width, 1 / 3))),
                             getColor: [177, 0, 38]
                         });
+                        add_id_2_list('arc' + cnt, data.length);
                         map.addLayer(layer);
                         if (status === 'N') {
+                            console.log('send once');
                             const sendingObj = {
                                 query: query, lowerLongitude: sw_lng, upperLongitude: ne_lng,
                                 lowerLatitude: sw_lat, upperLatitude: ne_lat, date: date
