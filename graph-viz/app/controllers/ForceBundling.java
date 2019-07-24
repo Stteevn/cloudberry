@@ -183,7 +183,7 @@ public class ForceBundling {
         Vector sumOfForces = new Vector(0, 0);
         ArrayList<Integer> compatibleEdgeList = compatibilityList.get(e_ind);
         if(lengths != null && e_ind < lengths.size()) {
-            weightApplyElectrostaticForce(lengths.get(e_ind), e_ind, i, sumOfForces, compatibleEdgeList);
+            weightApplyElectrostaticForce(1, e_ind, i, sumOfForces, compatibleEdgeList);
         }else{
             weightApplyElectrostaticForce(1, e_ind, i, sumOfForces, compatibleEdgeList);
         }
@@ -214,11 +214,13 @@ public class ForceBundling {
             Vector resultingForce = new Vector(0, 0);
             Vector springForce = applySpringForce(e_ind, i, kP);
             Vector electrostaticForce = applyElectrostaticForce(e_ind, i);
-            double flen = Math.sqrt(Math.pow(springForce.x + electrostaticForce.x, 2) + Math.pow(springForce.y + electrostaticForce.y, 2));
-            if (flen > 1e-4) {
-                resultingForce.x = S * (springForce.x + electrostaticForce.x) / flen;
-                resultingForce.y = S * (springForce.y + electrostaticForce.y) / flen;
-            }
+//            double flen = Math.sqrt(Math.pow(springForce.x + electrostaticForce.x, 2) + Math.pow(springForce.y + electrostaticForce.y, 2));
+//            if (flen > 1e-4) {
+//                resultingForce.x = S * (springForce.x + electrostaticForce.x) / flen;
+//                resultingForce.y = S * (springForce.y + electrostaticForce.y) / flen;
+//            }
+            resultingForce.x = S * (springForce.x + electrostaticForce.x);
+            resultingForce.y = S * (springForce.y + electrostaticForce.y);
             resultingForcesForSubdivisionPoints.add(resultingForce);
         }
         resultingForcesForSubdivisionPoints.add(new Vector(0, 0));

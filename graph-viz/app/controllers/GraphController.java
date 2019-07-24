@@ -40,8 +40,11 @@ public class GraphController extends Controller {
     private static final String finished = "Y";
     // indicates the sending process is not completed
     private static final String unfinished = "N";
+    private static final String afterEdgeLimit = "C";
     private static ForceBundling fb;
     private static ArrayList<Edge> centerEdges;
+    final int edgeLimit = 2000;
+    private boolean beforeEdgeLimit = true;
 
     public void bundle(String query, BundleActor bundleActor) {
         // parse the json and initialize the variables
@@ -58,11 +61,12 @@ public class GraphController extends Controller {
         double upperLatitude = Double.parseDouble(jsonNode.get("upperLatitude").asText());
         query = jsonNode.get("query").asText();
         String endDate = null;
-        if (jsonNode.has("date")) {
+        if (!beforeEdgeLimit && jsonNode.has("date")) {
             endDate = jsonNode.get("date").asText();
             edges = new Hashtable<>();
             allEdges = new ArrayList<>();
-        }else {
+        }
+        if (!jsonNode.has("date")) {
             edges = new Hashtable<>();
             allEdges = new ArrayList<>();
         }
@@ -76,27 +80,14 @@ public class GraphController extends Controller {
             ArrayList<Vector> alldataNodes = new ArrayList<>();
             ArrayList<EdgeVector> alldataEdges = new ArrayList<>();
             ArrayList<Integer> weights = new ArrayList<>();
-            if(fb != null){
-                for (Edge entry : centerEdges) {
-                    weights.add(entry.getWeight());
-                    alldataNodes.add(new Vector(entry.getFromLongitude(), entry.getFromLatitude()));
-                    alldataNodes.add(new Vector(entry.getToLongitude(), entry.getToLatitude()));
-                    alldataEdges.add(new EdgeVector(alldataNodes.size() - 2, alldataNodes.size() - 1));
-                }
-//                weights.add(0);
-//                alldataNodes.add(fb.centerL);
-//                alldataNodes.add(fb.centerR);
-//                alldataEdges.add(new EdgeVector(alldataNodes.size() - 2, alldataNodes.size() - 1));
+            if (beforeEdgeLimit) {
+                loadListBeforeEdgeLimit(alldataNodes, alldataEdges, weights);
             }
-//            for (Map.Entry<Integer, Edge> entry : edges.entrySet()) {
-            for (Edge entry : allEdges) {
-//                weights.add(entry.getValue().getWeight());
-//                alldataNodes.add(new Vector(entry.getValue().getFromLongitude(), entry.getValue().getFromLatitude()));
-//                alldataNodes.add(new Vector(entry.getValue().getToLongitude(), entry.getValue().getToLatitude()));
-                weights.add(entry.getWeight());
-                alldataNodes.add(new Vector(entry.getFromLongitude(), entry.getFromLatitude()));
-                alldataNodes.add(new Vector(entry.getToLongitude(), entry.getToLatitude()));
-                alldataEdges.add(new EdgeVector(alldataNodes.size() - 2, alldataNodes.size() - 1));
+            else {
+                loadListAfterEdgeLimit(alldataNodes, alldataEdges, weights);
+            }
+            if (beforeEdgeLimit && alldataEdges.size() > edgeLimit) {
+                beforeEdgeLimit = false;
             }
             ForceBundling forceBundling;
             if(fb == null){
@@ -142,6 +133,32 @@ public class GraphController extends Controller {
         }
         bundleActor.returnData(json);
 
+    }
+
+    private void loadListBeforeEdgeLimit(ArrayList<Vector> alldataNodes, ArrayList<EdgeVector> alldataEdges, ArrayList<Integer> weights) {
+        for (Edge entry : allEdges) {
+            weights.add(entry.getWeight());
+            alldataNodes.add(new Vector(entry.getFromLongitude(), entry.getFromLatitude()));
+            alldataNodes.add(new Vector(entry.getToLongitude(), entry.getToLatitude()));
+            alldataEdges.add(new EdgeVector(alldataNodes.size() - 2, alldataNodes.size() - 1));
+        }
+    }
+
+    private void loadListAfterEdgeLimit(ArrayList<Vector> alldataNodes, ArrayList<EdgeVector> alldataEdges, ArrayList<Integer> weights) {
+        if(fb != null){
+            for (Edge entry : centerEdges) {
+                weights.add(entry.getWeight());
+                alldataNodes.add(new Vector(entry.getFromLongitude(), entry.getFromLatitude()));
+                alldataNodes.add(new Vector(entry.getToLongitude(), entry.getToLatitude()));
+                alldataEdges.add(new EdgeVector(alldataNodes.size() - 2, alldataNodes.size() - 1));
+            }
+        }
+        for (Edge entry : allEdges) {
+            weights.add(entry.getWeight());
+            alldataNodes.add(new Vector(entry.getFromLongitude(), entry.getFromLatitude()));
+            alldataNodes.add(new Vector(entry.getToLongitude(), entry.getToLatitude()));
+            alldataEdges.add(new EdgeVector(alldataNodes.size() - 2, alldataNodes.size() - 1));
+        }
     }
 
     private Calendar incrementCalendar(int queryPeriod, String date, SimpleDateFormat sdf) throws ParseException {
@@ -205,7 +222,13 @@ public class GraphController extends Controller {
                 System.out.println(finished + date);
                 objectNode.put("flag", finished);
                 objectNode.put("date", date);
-            } else {
+            }
+            else if (!beforeEdgeLimit) {
+                System.out.println(afterEdgeLimit + date);
+                objectNode.put("flag", afterEdgeLimit);
+                objectNode.put("date", date);
+            }
+            else {
                 System.out.println(unfinished + date);
                 objectNode.put("flag", unfinished);
                 objectNode.put("date", date);
