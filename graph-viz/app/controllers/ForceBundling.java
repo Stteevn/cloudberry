@@ -1,6 +1,6 @@
 package controllers;
 
-import java.util.ArrayList;
+import java.util.*;
 
 class EdgeVector {
     int sourceNodeInd;
@@ -57,6 +57,7 @@ public class ForceBundling {
     Vector centerR;
     // length of edges already dealt with
     int length;
+    ArrayList<Integer> lengths;
 
     public ForceBundling(ArrayList<Vector> dataNodes, ArrayList<EdgeVector> dataEdges) {
         this.dataNodes = dataNodes;
@@ -181,8 +182,8 @@ public class ForceBundling {
     Vector applyElectrostaticForce(int e_ind, int i) {
         Vector sumOfForces = new Vector(0, 0);
         ArrayList<Integer> compatibleEdgeList = compatibilityList.get(e_ind);
-        if(e_ind == 0) {
-            weightApplyElectrostaticForce(this.length * 1000000000, e_ind, i, sumOfForces, compatibleEdgeList);
+        if(lengths != null && e_ind < lengths.size()) {
+            weightApplyElectrostaticForce(lengths.get(e_ind), e_ind, i, sumOfForces, compatibleEdgeList);
         }else{
             weightApplyElectrostaticForce(1, e_ind, i, sumOfForces, compatibleEdgeList);
         }
@@ -399,5 +400,49 @@ public class ForceBundling {
         }
         this.length += dataEdges.size();
         return this;
+    }
+
+    ArrayList<Edge> getCenterEdges() {
+        ArrayList<Edge> centerEdges = new ArrayList<>();
+        HashMap<Integer, Set<Integer>> map = new HashMap<>();
+        boolean flag;
+        for (int i = 0; i < dataEdges.size(); i++) {
+            flag = false;
+            for(Map.Entry<Integer, Set<Integer>> entry : map.entrySet()){
+                if(entry.getValue().contains(i)){
+                    if(compatibilityList.get(i).size() > compatibilityList.get(entry.getKey()).size()){
+                        entry.setValue(new HashSet<>(compatibilityList.get(i)));
+                    }
+                    flag = true;
+                    break;
+                }
+            }
+            if(!flag){
+                map.put(i, new HashSet<>(compatibilityList.get(i)));
+            }
+        }
+        System.out.println("dataEdges: " + dataEdges.size() + " map: " + map.size());
+        lengths = new ArrayList<>();
+        for (Map.Entry<Integer, Set<Integer>> entry : map.entrySet()) {
+            int length = 0;
+            for (int o = 0; o < entry.getValue().size(); o++) {
+                Vector centerL = new Vector(0.0, 0.0);
+                Vector centerR = new Vector(0.0, 0.0);
+                Vector s = dataNodes.get(dataEdges.get(o).sourceNodeInd);
+                Vector t = dataNodes.get(dataEdges.get(o).targetNodeInd);
+                Vector l = s.x < t.x ? s : t;
+                Vector r = s.x < t.x ? t : s;
+                centerL.x = (centerL.x * length + l.x) / (length + 1) * 1.0;
+                centerL.y = (centerL.y * length + l.y) / (length + 1) * 1.0;
+                centerR.x = (centerR.x * length + r.x) / (length + 1) * 1.0;
+                centerR.y = (centerR.y * length + r.y) / (length + 1) * 1.0;
+                length++;
+            }
+            Edge centerEdge = new Edge(centerL.x, centerL.y, centerR.x, centerR.y, 0);
+            centerEdges.add(centerEdge);
+            lengths.add(length);
+        }
+        System.out.println("lengths size " + lengths.size());
+        return centerEdges;
     }
 }

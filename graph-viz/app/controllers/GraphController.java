@@ -41,6 +41,7 @@ public class GraphController extends Controller {
     // indicates the sending process is not completed
     private static final String unfinished = "N";
     private static ForceBundling fb;
+    private static ArrayList<Edge> centerEdges;
 
     public void bundle(String query, BundleActor bundleActor) {
         // parse the json and initialize the variables
@@ -76,10 +77,16 @@ public class GraphController extends Controller {
             ArrayList<EdgeVector> alldataEdges = new ArrayList<>();
             ArrayList<Integer> weights = new ArrayList<>();
             if(fb != null){
-                weights.add(0);
-                alldataNodes.add(fb.centerL);
-                alldataNodes.add(fb.centerR);
-                alldataEdges.add(new EdgeVector(alldataNodes.size() - 2, alldataNodes.size() - 1));
+                for (Edge entry : centerEdges) {
+                    weights.add(entry.getWeight());
+                    alldataNodes.add(new Vector(entry.getFromLongitude(), entry.getFromLatitude()));
+                    alldataNodes.add(new Vector(entry.getToLongitude(), entry.getToLatitude()));
+                    alldataEdges.add(new EdgeVector(alldataNodes.size() - 2, alldataNodes.size() - 1));
+                }
+//                weights.add(0);
+//                alldataNodes.add(fb.centerL);
+//                alldataNodes.add(fb.centerR);
+//                alldataEdges.add(new EdgeVector(alldataNodes.size() - 2, alldataNodes.size() - 1));
             }
 //            for (Map.Entry<Integer, Edge> entry : edges.entrySet()) {
             for (Edge entry : allEdges) {
@@ -99,6 +106,7 @@ public class GraphController extends Controller {
             }
             fb = forceBundling.forceBundle();
             ArrayList<Path> pathResult = fb.subdivisionPoints;
+            centerEdges = fb.getCenterEdges();
             objectMapper = new ObjectMapper();
             ArrayNode pathJson = objectMapper.createArrayNode();
             long startParse = System.currentTimeMillis();
@@ -121,7 +129,7 @@ public class GraphController extends Controller {
             }
             objectNode.set("data", pathJson);
             json = objectNode.toString();
-            System.out.println(json);
+//            System.out.println(json);
             long endReply = System.currentTimeMillis();
             System.out.println("Total time in parsing data from Json is " + (endReply - startParse) + " ms");
             System.out.println("Total time in executing query in database is " + (startBundling - startReply) + " ms");
