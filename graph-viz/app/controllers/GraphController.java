@@ -61,6 +61,9 @@ public class GraphController extends Controller {
         double upperLatitude = Double.parseDouble(jsonNode.get("upperLatitude").asText());
         query = jsonNode.get("query").asText();
         String endDate = null;
+        if (beforeEdgeLimit && jsonNode.has("date")) {
+            endDate = jsonNode.get("date").asText();
+        }
         if (!beforeEdgeLimit && jsonNode.has("date")) {
             endDate = jsonNode.get("date").asText();
             edges = new Hashtable<>();
@@ -222,6 +225,7 @@ public class GraphController extends Controller {
                 System.out.println(finished + date);
                 objectNode.put("flag", finished);
                 objectNode.put("date", date);
+                beforeEdgeLimit = true;
             }
             else if (!beforeEdgeLimit) {
                 System.out.println(afterEdgeLimit + date);

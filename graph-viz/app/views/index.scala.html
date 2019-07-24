@@ -48,7 +48,8 @@
                     class="form-control col-sm-4 ng-pristine ng-untouched ng-empty ng-invalid ng-invalid-required"
                     id="keyword-textbox" placeholder="Search keywords e.g hurricane">
                     <div class="col-sm-1"></div>
-                    <button type="submit" onclick="bundleGraph()" class=" btn btn-primary" id="button">Bundling</button></span>
+                    <button type="submit" onclick="bundleGraph()" class=" btn btn-primary" id="button">
+                        Bundling</button></span>
                 </div>
             </div>
         </body>
@@ -77,11 +78,13 @@
                 var layer_id_list = [];
                 var layer_data_amount = [];
                 var cnt = 0;
+
                 function add_id_2_list(id, num) {
                     layer_id_list.push(id);
                     layer_data_amount.push(num);
                     cnt++;
                 }
+
                 function remove_all_layers() {
                     for (var i = layer_id_list.length - 1; i >= 0 ; i--) {
                         map.removeLayer(layer_id_list[i]);
@@ -92,15 +95,15 @@
                 }
 
                 function removeSingleLayer() {
-                    if(map.getLayer('arc') !== undefined){
+                    if (map.getLayer('arc') !== undefined) {
                         map.removeLayer('arc');
                     }
                 }
 
                 function bundleGraph() {
-                    // removeSingleLayer();
+                    removeSingleLayer();
 
-                    if (cnt != 0) {
+                    if (cnt !== 0) {
                         remove_all_layers();
                     }
 
@@ -124,7 +127,6 @@
                     };
 
                     socket.onmessage = function (event) {
-
                         var meta = event.data;
                         console.log(meta);
                         var json = JSON.parse(meta);
@@ -133,18 +135,35 @@
                         var date = json['date'];
                         var data = json['data'];
                         console.log(data);
-                        const layer = new MapboxLayer({
-                            id: 'arc' + cnt,
-                            type: LineLayer,
-                            data: data,
-                            getSourcePosition: d => d.from,
-                            getTargetPosition: d => d.to,
-                            getStrokeWidth: d => Math.min(15, Math.ceil(Math.pow(d.width, 1 / 3))),
-                            getColor: [177, 0, 38]
-                        });
-                        add_id_2_list('arc' + cnt, data.length);
+                        var layer;
+                        if (status === 'C') {
+                            layer = new MapboxLayer({
+                                id: 'arc' + cnt,
+                                type: LineLayer,
+                                data: data,
+                                getSourcePosition: d => d.from,
+                                getTargetPosition: d => d.to,
+                                getStrokeWidth: d => Math.min(15, Math.ceil(Math.pow(d.width, 1 / 3))),
+                                getColor: [177, 0, 38]
+                            });
+                            add_id_2_list('arc' + cnt, data.length);
+                        } else if (status === 'Y') {
+                            socket.close();
+                            return;
+                        } else {
+                            removeSingleLayer();
+                            layer = new MapboxLayer({
+                                id: 'arc',
+                                type: LineLayer,
+                                data: data,
+                                getSourcePosition: d => d.from,
+                                getTargetPosition: d => d.to,
+                                getStrokeWidth: d => Math.min(15, Math.ceil(Math.pow(d.width, 1 / 3))),
+                                getColor: [177, 0, 38]
+                            });
+                        }
                         map.addLayer(layer);
-                        if (status === 'N') {
+                        if (status !== 'Y') {
                             console.log('send once');
                             const sendingObj = {
                                 query: query, lowerLongitude: sw_lng, upperLongitude: ne_lng,
