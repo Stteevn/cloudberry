@@ -128,13 +128,21 @@
 
                     socket.onmessage = function (event) {
                         var meta = event.data;
-                        console.log(meta);
+                        // console.log(meta);
                         var json = JSON.parse(meta);
                         var status = json['flag'];
-                        console.log(status);
+                        // console.log(status);
                         var date = json['date'];
                         var data = json['data'];
-                        console.log(data);
+                        var keyword = json['keyword'];
+                        console.log(meta);
+                        console.log('keyword' + keyword);
+                        console.log('query' + query);
+                        if(keyword !== query){
+                            console.log('data is dropped');
+                            return;
+                        }
+                        console.log('edge number' + data.length);
                         var layer;
                         if (status === 'C') {
                             layer = new MapboxLayer({
@@ -164,7 +172,7 @@
                         }
                         map.addLayer(layer);
                         if (status !== 'Y') {
-                            console.log('send once');
+                            // console.log('send once');
                             const sendingObj = {
                                 query: query, lowerLongitude: sw_lng, upperLongitude: ne_lng,
                                 lowerLatitude: sw_lat, upperLatitude: ne_lat, date: date

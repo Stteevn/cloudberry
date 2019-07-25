@@ -16,8 +16,7 @@ class Vector {
     double x;
     double y;
 
-    Vector() {
-    }
+    Vector() { }
 
     Vector(double x, double y) {
         this.x = x;

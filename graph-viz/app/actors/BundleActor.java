@@ -7,15 +7,18 @@ import controllers.GraphController;
 
 public class BundleActor extends AbstractActor {
 
-    private static GraphController graphController = new GraphController();
+    int a = 1;
+
+    private GraphController graphController = new GraphController();
 
     public static Props props(ActorRef out) {
-        return Props.create(BundleActor.class, out);
+        return Props.create(BundleActor.class, ()->new BundleActor(out));
     }
 
     private final ActorRef out;
 
     public BundleActor(ActorRef out) {
+        System.out.println("one actor is activated." + (a++));
         this.out = out;
     }
 
@@ -29,4 +32,5 @@ public class BundleActor extends AbstractActor {
     public void returnData(String s) {
         out.tell(s, self());
     }
+
 }

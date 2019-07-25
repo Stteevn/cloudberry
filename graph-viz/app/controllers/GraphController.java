@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.checkerframework.checker.units.qual.A;
 import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 import play.mvc.*;
 import java.io.File;
@@ -31,20 +30,26 @@ public class GraphController extends Controller {
      * <code>/</code>.
      */
 
-    private static Hashtable<Integer, Edge> edges;
-    private static ArrayList<Edge> allEdges;
+    private Hashtable<Integer, Edge> edges;
+    private ArrayList<Edge> allEdges;
     // configuration file
     private File configFile = new File("./conf/config.properties");
     private Properties configProps;
     // indicates the sending process is completed
-    private static final String finished = "Y";
+    private final String finished = "Y";
     // indicates the sending process is not completed
-    private static final String unfinished = "N";
-    private static final String afterEdgeLimit = "C";
-    private static ForceBundling fb;
-    private static ArrayList<Edge> centerEdges;
+    private final String unfinished = "N";
+    private final String afterEdgeLimit = "C";
+    private ForceBundling fb;
+    private ArrayList<Edge> centerEdges;
     final int edgeLimit = 2000;
     private boolean beforeEdgeLimit = true;
+
+    int a = 1;
+
+    public GraphController(){
+        System.out.println("one graph controller is activated." + (a++));
+    }
 
     public void bundle(String query, BundleActor bundleActor) {
         // parse the json and initialize the variables
@@ -89,9 +94,9 @@ public class GraphController extends Controller {
             else {
                 loadListAfterEdgeLimit(alldataNodes, alldataEdges, weights);
             }
-            if (beforeEdgeLimit && alldataEdges.size() > edgeLimit) {
-                beforeEdgeLimit = false;
-            }
+//            if (beforeEdgeLimit && alldataEdges.size() > edgeLimit) {
+//                beforeEdgeLimit = false;
+//            }
             ForceBundling forceBundling;
             if(fb == null){
                 forceBundling = new ForceBundling(alldataNodes, alldataEdges);
@@ -237,6 +242,7 @@ public class GraphController extends Controller {
                 objectNode.put("flag", unfinished);
                 objectNode.put("date", date);
             }
+            objectNode.put("keyword", query);
             state = prepareState(query, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, conn, date, start);
             resultSet = state.executeQuery();
             while (resultSet.next()) {
@@ -271,7 +277,7 @@ public class GraphController extends Controller {
                 + "@@ to_tsquery( ? )) and ((from_longitude between ? AND ? AND from_latitude between ? AND ?) OR"
                 + " (to_longitude between ? AND ? AND to_latitude between ? AND ?)) AND sqrt(pow(from_latitude - to_latitude, 2) + pow(from_longitude - to_longitude, 2)) >= ? "
                 + "AND to_create_at::timestamp > TO_TIMESTAMP( ? , 'yyyymmddhh24miss') "
-                + "AND to_create_at::timestamp <= TO_TIMESTAMP( ? , 'yyyymmddhh24miss');";
+                + "AND to_create_at::timestamp <= TO_TIMESTAMP( ? , 'yyyymmddhh24miss') order by from_longitude;";
         state = conn.prepareStatement(searchQuery);
         state.setString(1, query);
         state.setString(2, query);
