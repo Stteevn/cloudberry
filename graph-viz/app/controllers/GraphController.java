@@ -89,18 +89,24 @@ public class GraphController extends Controller {
             else {
                 loadListAfterEdgeLimit(alldataNodes, alldataEdges, weights);
             }
-            if (beforeEdgeLimit && alldataEdges.size() > edgeLimit) {
-                beforeEdgeLimit = false;
-            }
+//            if (beforeEdgeLimit && alldataEdges.size() > edgeLimit) {
+//                beforeEdgeLimit = false;
+//            }
+            int prevLength = 0;
             ForceBundling forceBundling;
             if(fb == null){
                 forceBundling = new ForceBundling(alldataNodes, alldataEdges);
             }else {
+                prevLength = fb.lengths.size();
                 forceBundling = new ForceBundling(alldataNodes, alldataEdges, fb.centerL, fb.centerR, fb.length);
             }
             fb = forceBundling.forceBundle();
             ArrayList<Path> pathResult = fb.subdivisionPoints;
             centerEdges = fb.getCenterEdges();
+            if (beforeEdgeLimit && Math.abs(fb.lengths.size() - prevLength) / (1.0 * prevLength) < 0.1 && alldataEdges.size() > edgeLimit) {
+                beforeEdgeLimit = false;
+            }
+            System.out.println("prevLength: " + prevLength + " nowLength: " + fb.lengths.size());
             objectMapper = new ObjectMapper();
             ArrayNode pathJson = objectMapper.createArrayNode();
             long startParse = System.currentTimeMillis();

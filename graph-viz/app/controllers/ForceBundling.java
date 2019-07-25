@@ -215,9 +215,13 @@ public class ForceBundling {
             Vector springForce = applySpringForce(e_ind, i, kP);
             Vector electrostaticForce = applyElectrostaticForce(e_ind, i);
             double flen = Math.sqrt(Math.pow(springForce.x + electrostaticForce.x, 2) + Math.pow(springForce.y + electrostaticForce.y, 2));
+            int weight = 1;
+            if (lengths != null && e_ind < lengths.size()) {
+                weight = lengths.get(i) * 1000000000;
+            }
             if (flen > 1e-4) {
-                resultingForce.x = S * (springForce.x + electrostaticForce.x) / flen;
-                resultingForce.y = S * (springForce.y + electrostaticForce.y) / flen;
+                resultingForce.x = S * (springForce.x + weight * electrostaticForce.x) / flen;
+                resultingForce.y = S * (springForce.y + weight * electrostaticForce.y) / flen;
             }
 //            resultingForce.x = S * (springForce.x + electrostaticForce.x);
 //            resultingForce.y = S * (springForce.y + electrostaticForce.y);

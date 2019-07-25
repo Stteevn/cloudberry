@@ -7,7 +7,7 @@ import controllers.GraphController;
 
 public class BundleActor extends AbstractActor {
 
-    private static GraphController graphController = new GraphController();
+    private GraphController graphController = new GraphController();
 
     public static Props props(ActorRef out) {
         return Props.create(BundleActor.class, out);
