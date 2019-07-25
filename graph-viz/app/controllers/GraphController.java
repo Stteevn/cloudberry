@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 import play.mvc.*;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -44,12 +45,6 @@ public class GraphController extends Controller {
     private ArrayList<Edge> centerEdges;
     final int edgeLimit = 2000;
     private boolean beforeEdgeLimit = true;
-
-    int a = 1;
-
-    public GraphController(){
-        System.out.println("one graph controller is activated." + (a++));
-    }
 
     public void bundle(String query, BundleActor bundleActor) {
         // parse the json and initialize the variables
@@ -90,22 +85,27 @@ public class GraphController extends Controller {
             ArrayList<Integer> weights = new ArrayList<>();
             if (beforeEdgeLimit) {
                 loadListBeforeEdgeLimit(alldataNodes, alldataEdges, weights);
-            }
-            else {
+            } else {
                 loadListAfterEdgeLimit(alldataNodes, alldataEdges, weights);
             }
 //            if (beforeEdgeLimit && alldataEdges.size() > edgeLimit) {
 //                beforeEdgeLimit = false;
 //            }
+            int prevLength = 0;
             ForceBundling forceBundling;
-            if(fb == null){
+            if (fb == null) {
                 forceBundling = new ForceBundling(alldataNodes, alldataEdges);
-            }else {
+            } else {
+                prevLength = fb.lengths.size();
                 forceBundling = new ForceBundling(alldataNodes, alldataEdges, fb.centerL, fb.centerR, fb.length);
             }
             fb = forceBundling.forceBundle();
             ArrayList<Path> pathResult = fb.subdivisionPoints;
             centerEdges = fb.getCenterEdges();
+            if (beforeEdgeLimit && Math.abs(fb.lengths.size() - prevLength) / (1.0 * prevLength) < 0.1 && alldataEdges.size() > edgeLimit) {
+                beforeEdgeLimit = false;
+            }
+            System.out.println("prevLength: " + prevLength + " nowLength: " + fb.lengths.size());
             objectMapper = new ObjectMapper();
             ArrayNode pathJson = objectMapper.createArrayNode();
             long startParse = System.currentTimeMillis();
@@ -153,7 +153,7 @@ public class GraphController extends Controller {
     }
 
     private void loadListAfterEdgeLimit(ArrayList<Vector> alldataNodes, ArrayList<EdgeVector> alldataEdges, ArrayList<Integer> weights) {
-        if(fb != null){
+        if (fb != null) {
             for (Edge entry : centerEdges) {
                 weights.add(entry.getWeight());
                 alldataNodes.add(new Vector(entry.getFromLongitude(), entry.getFromLatitude()));
@@ -193,7 +193,7 @@ public class GraphController extends Controller {
     }
 
     private ObjectNode queryResult(String query, String endDate, double lowerLongitude, double upperLongitude, double lowerLatitude,
-                                               double upperLatitude, ObjectNode objectNode) {
+                                   double upperLatitude, ObjectNode objectNode) {
         String firstDate = null;
         String lastDate = null;
         int queryPeriod = 0;
@@ -231,13 +231,11 @@ public class GraphController extends Controller {
                 objectNode.put("flag", finished);
                 objectNode.put("date", date);
                 beforeEdgeLimit = true;
-            }
-            else if (!beforeEdgeLimit) {
+            } else if (!beforeEdgeLimit) {
                 System.out.println(afterEdgeLimit + date);
                 objectNode.put("flag", afterEdgeLimit);
                 objectNode.put("date", date);
-            }
-            else {
+            } else {
                 System.out.println(unfinished + date);
                 objectNode.put("flag", unfinished);
                 objectNode.put("date", date);
