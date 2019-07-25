@@ -275,7 +275,7 @@ public class GraphController extends Controller {
                 + "@@ to_tsquery( ? )) and ((from_longitude between ? AND ? AND from_latitude between ? AND ?) OR"
                 + " (to_longitude between ? AND ? AND to_latitude between ? AND ?)) AND sqrt(pow(from_latitude - to_latitude, 2) + pow(from_longitude - to_longitude, 2)) >= ? "
                 + "AND to_create_at::timestamp > TO_TIMESTAMP( ? , 'yyyymmddhh24miss') "
-                + "AND to_create_at::timestamp <= TO_TIMESTAMP( ? , 'yyyymmddhh24miss') order by from_longitude;";
+                + "AND to_create_at::timestamp <= TO_TIMESTAMP( ? , 'yyyymmddhh24miss');";
         state = conn.prepareStatement(searchQuery);
         state.setString(1, query);
         state.setString(2, query);
