@@ -116,7 +116,7 @@
                     var sw_lng = sw.lng;
                     var sw_lat = sw.lat;
 
-                    let socket = new WebSocket("ws://localhost:9000/bundle");
+                    let socket = new WebSocket("ws://169.234.14.113:9000/bundle");
                     socket.onopen = function (e) {
                         current_timestamp = Date.now();
                         const sendingObj = {

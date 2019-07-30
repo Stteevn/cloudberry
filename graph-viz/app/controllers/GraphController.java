@@ -28,7 +28,7 @@ public class GraphController extends Controller {
      * <code>/</code>.
      */
 
-    private Hashtable<Integer, Edge> edges;
+//    private Hashtable<Integer, Edge> edges;
     private ArrayList<Edge> allEdges;
     // configuration properties
     private Properties configProps;
@@ -41,7 +41,7 @@ public class GraphController extends Controller {
     // the object that contains previous return information
     private BundlingAlgorithmReturn bar;
     private ArrayList<Edge> centerEdges;
-    final int edgeLimit = 300;
+    final int edgeLimit = 2000;
     private boolean beforeEdgeLimit = true;
 
     public void getData(String query, BundleActor bundleActor) {
@@ -61,12 +61,12 @@ public class GraphController extends Controller {
         query = jsonNode.get("query").asText();
         String endDate = null;
         if (!jsonNode.has("date")) {
-            edges = new Hashtable<>();
+//            edges = new Hashtable<>();
             allEdges = new ArrayList<>();
         } else {
             endDate = jsonNode.get("date").asText();
             if (!beforeEdgeLimit) {
-                edges = new Hashtable<>();
+//                edges = new Hashtable<>();
                 allEdges = new ArrayList<>();
             }
         }
@@ -97,7 +97,7 @@ public class GraphController extends Controller {
             System.out.println("Total time in executing query in database is " + (startBundling - startReply) + " ms");
             System.out.println("Total time in edge bundling is " + (startParse - startBundling) + " ms");
             System.out.println("Total time in running replay() is " + (endReply - startReply) + " ms");
-            System.out.println("Total number of records " + edges.size());
+//            System.out.println("Total number of records " + edges.size());
             System.out.println("Total number of edges " + alldataEdges.size());
         } catch (Exception e) {
             System.out.println(e.getMessage());
@@ -108,10 +108,14 @@ public class GraphController extends Controller {
     private ArrayList<Path> runBundling(ArrayList<Vector> alldataNodes, ArrayList<EdgeVector> alldataEdges) {
         ForceBundlingReturn fbr = (ForceBundlingReturn) bar;
         int prevLength = 0;
-        if (bar != null) {
+        BundlingAlgorithm forceBundling;
+        if (bar == null) {
+            forceBundling = new ForceBundling(alldataNodes, alldataEdges);
+        } else {
             prevLength = fbr.lengths.size();
+            // status indicates whether the changing state has happened
+            forceBundling = new ForceBundling(alldataNodes, alldataEdges, fbr.lengths, beforeEdgeLimit);
         }
-        BundlingAlgorithm forceBundling = new ForceBundling(alldataNodes, alldataEdges);
         bar = forceBundling.bundle();
         fbr = (ForceBundlingReturn) bar;
         ArrayList<Path> pathResult = fbr.subdivisionPoints;

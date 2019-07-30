@@ -16,7 +16,8 @@ class Vector {
     double x;
     double y;
 
-    Vector() { }
+    Vector() {
+    }
 
     Vector(double x, double y) {
         this.x = x;
@@ -50,14 +51,23 @@ public class ForceBundling extends BundlingAlgorithm {
     final double C = 5;
     final double I_initial = 40;
     final double I_rate = 2.0 / 3.0;
-    final double compatibility_threshold = 0.75;
+    double compatibility_threshold = 0.75;
     final double eps = 1e-6;
+    boolean status;
     // length of edges already dealt with
     ArrayList<Integer> lengths;
 
     public ForceBundling(ArrayList<Vector> dataNodes, ArrayList<EdgeVector> dataEdges) {
         this.dataNodes = dataNodes;
         this.dataEdges = dataEdges;
+        this.status = true;
+    }
+
+    public ForceBundling(ArrayList<Vector> dataNodes, ArrayList<EdgeVector> dataEdges, ArrayList<Integer> lengths, boolean status) {
+        this.dataNodes = dataNodes;
+        this.dataEdges = dataEdges;
+        this.lengths = lengths;
+        this.status = status;
     }
 
     double vectorDotProduct(Vector p, Vector q) {
@@ -145,16 +155,11 @@ public class ForceBundling extends BundlingAlgorithm {
     Vector applyElectrostaticForce(int e_ind, int i) {
         Vector sumOfForces = new Vector(0, 0);
         ArrayList<Integer> compatibleEdgeList = compatibilityList.get(e_ind);
-        if (lengths != null && e_ind < lengths.size()) {
-            weightApplyElectrostaticForce(1, e_ind, i, sumOfForces, compatibleEdgeList);
-        } else {
-            weightApplyElectrostaticForce(1, e_ind, i, sumOfForces, compatibleEdgeList);
-        }
-
+        weightApplyElectrostaticForce(e_ind, i, sumOfForces, compatibleEdgeList);
         return sumOfForces;
     }
 
-    private void weightApplyElectrostaticForce(int weight, int e_ind, int i, Vector sumOfForces, ArrayList<Integer> compatibleEdgeList) {
+    private void weightApplyElectrostaticForce(int e_ind, int i, Vector sumOfForces, ArrayList<Integer> compatibleEdgeList) {
         for (int oe = 0; oe < compatibleEdgeList.size(); oe++) {
             double x = subdivisionPoints.get(compatibleEdgeList.get(oe)).alv.get(i).x - subdivisionPoints.get(e_ind).alv.get(i).x;
             double y = subdivisionPoints.get(compatibleEdgeList.get(oe)).alv.get(i).y - subdivisionPoints.get(e_ind).alv.get(i).y;
@@ -163,8 +168,8 @@ public class ForceBundling extends BundlingAlgorithm {
                 Vector source = subdivisionPoints.get(compatibleEdgeList.get(oe)).alv.get(i);
                 Vector target = subdivisionPoints.get(e_ind).alv.get(i);
                 double diff = customEdgeLength(source, target);
-                sumOfForces.x += weight * force.x / diff;
-                sumOfForces.y += weight * force.y / diff;
+                sumOfForces.x += force.x / diff;
+                sumOfForces.y += force.y / diff;
             }
         }
     }
@@ -179,7 +184,7 @@ public class ForceBundling extends BundlingAlgorithm {
             Vector electrostaticForce = applyElectrostaticForce(e_ind, i);
             double flen = Math.sqrt(Math.pow(springForce.x + electrostaticForce.x, 2) + Math.pow(springForce.y + electrostaticForce.y, 2));
             int weight = 1;
-            if (lengths != null && e_ind < lengths.size()) {
+            if (!status && lengths != null && e_ind < lengths.size()) {
                 weight = lengths.get(e_ind);
             }
             if (flen > 1e-4) {
@@ -277,6 +282,11 @@ public class ForceBundling extends BundlingAlgorithm {
     void computeCompatibilityLists() {
         for (int e = 0; e < dataEdges.size() - 1; e++) {
             for (int oe = e + 1; oe < dataEdges.size(); oe++) {
+                if (!status && lengths != null && e < lengths.size()) {
+                    compatibility_threshold = 0.75;
+                } else {
+                    compatibility_threshold = 0.75;
+                }
                 if (areCompatible(dataEdges.get(e), dataEdges.get(oe))) {
                     compatibilityList.get(e).add(oe);
                     compatibilityList.get(oe).add(e);
@@ -389,7 +399,7 @@ public class ForceBundling extends BundlingAlgorithm {
                     break;
                 }
             }
-            if (!flag) {
+            if (!flag && compatibilityList.get(i).size() != 0) {
                 map.put(i, new HashSet<>(compatibilityList.get(i)));
             }
         }
