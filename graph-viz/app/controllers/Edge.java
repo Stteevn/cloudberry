@@ -2,6 +2,16 @@ package controllers;
 
 import java.util.Objects;
 
+/**
+ * Edge class indicates the structure of a edge that will be drawn on the graph.
+
+ * fromLatitude: the source latitude of the edge
+ * fromLongitude: the source longitude of the edge
+ * toLatitude: the target latitude of the edge
+ * toLongitude: the target longitude of the edge
+ * weight: the drawing weight of the edge
+ */
+
 public class Edge {
     private double fromLatitude;
     private double fromLongitude;

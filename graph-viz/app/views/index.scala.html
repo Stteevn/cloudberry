@@ -74,7 +74,7 @@
                     minZoom: 2
                 });
                 var query = "";
-
+                var current_timestamp;
                 var layer_id_list = [];
                 var layer_data_amount = [];
                 var cnt = 0;
@@ -118,9 +118,10 @@
 
                     let socket = new WebSocket("ws://localhost:9000/bundle");
                     socket.onopen = function (e) {
+                        current_timestamp = Date.now();
                         const sendingObj = {
                             query: query, lowerLongitude: sw_lng, upperLongitude: ne_lng,
-                            lowerLatitude: sw_lat, upperLatitude: ne_lat
+                            lowerLatitude: sw_lat, upperLatitude: ne_lat, timestamp: current_timestamp
                         };
                         const sendingJSON = JSON.stringify(sendingObj);
                         socket.send(sendingJSON);
@@ -134,11 +135,11 @@
                         // console.log(status);
                         var date = json['date'];
                         var data = json['data'];
-                        var keyword = json['keyword'];
+                        var timestamp = json['timestamp'];
                         console.log(meta);
-                        console.log('keyword' + keyword);
-                        console.log('query' + query);
-                        if(keyword !== query){
+                        console.log('timestamp' + timestamp);
+                        console.log('current_timestamp' + current_timestamp);
+                        if(timestamp !== current_timestamp.toString()){
                             console.log('data is dropped');
                             return;
                         }
@@ -175,7 +176,7 @@
                             // console.log('send once');
                             const sendingObj = {
                                 query: query, lowerLongitude: sw_lng, upperLongitude: ne_lng,
-                                lowerLatitude: sw_lat, upperLatitude: ne_lat, date: date
+                                lowerLatitude: sw_lat, upperLatitude: ne_lat, date: date, timestamp: current_timestamp
                             };
                             const sendingJSON = JSON.stringify(sendingObj);
                             socket.send(sendingJSON);

@@ -32,7 +32,7 @@ class Path {
     }
 }
 
-public class ForceBundling {
+public class ForceBundling extends BundlingAlgorithm {
 
     ArrayList<Vector> dataNodes;
     ArrayList<EdgeVector> dataEdges;
@@ -52,48 +52,12 @@ public class ForceBundling {
     final double I_rate = 2.0 / 3.0;
     final double compatibility_threshold = 0.75;
     final double eps = 1e-6;
-    Vector centerL;
-    Vector centerR;
     // length of edges already dealt with
-    int length;
     ArrayList<Integer> lengths;
 
     public ForceBundling(ArrayList<Vector> dataNodes, ArrayList<EdgeVector> dataEdges) {
         this.dataNodes = dataNodes;
         this.dataEdges = dataEdges;
-        this.centerL = new Vector(0.0, 0.0);
-        this.centerR = new Vector(0.0, 0.0);
-        this.length = 0;
-        for (int o = 0; o < dataEdges.size(); o++) {
-            Vector s = dataNodes.get(dataEdges.get(o).sourceNodeInd);
-            Vector t = dataNodes.get(dataEdges.get(o).targetNodeInd);
-            Vector l = s.x < t.x ? s : t;
-            Vector r = s.x < t.x ? t : s;
-            this.centerL.x = (this.centerL.x * length + l.x) / (length + 1) * 1.0;
-            this.centerL.y = (this.centerL.y * length + l.y) / (length + 1) * 1.0;
-            this.centerR.x = (this.centerR.x * length + r.x) / (length + 1) * 1.0;
-            this.centerR.y = (this.centerR.y * length + r.y) / (length + 1) * 1.0;
-
-        }
-    }
-
-    public ForceBundling(ArrayList<Vector> dataNodes, ArrayList<EdgeVector> dataEdges, Vector cL, Vector cR, int length) {
-        this.dataNodes = dataNodes;
-        this.dataEdges = dataEdges;
-        this.centerL = cL;
-        this.centerR = cR;
-        this.length = length;
-        for (int o = 0; o < dataEdges.size(); o++) {
-            Vector s = dataNodes.get(dataEdges.get(o).sourceNodeInd);
-            Vector t = dataNodes.get(dataEdges.get(o).targetNodeInd);
-            Vector l = s.x < t.x ? s : t;
-            Vector r = s.x < t.x ? t : s;
-            this.centerL.x = (this.centerL.x * length + l.x) / (length + 1) * 1.0;
-            this.centerL.y = (this.centerL.y * length + l.y) / (length + 1) * 1.0;
-            this.centerR.x = (this.centerR.x * length + r.x) / (length + 1) * 1.0;
-            this.centerR.y = (this.centerR.y * length + r.y) / (length + 1) * 1.0;
-
-        }
     }
 
     double vectorDotProduct(Vector p, Vector q) {
@@ -181,9 +145,9 @@ public class ForceBundling {
     Vector applyElectrostaticForce(int e_ind, int i) {
         Vector sumOfForces = new Vector(0, 0);
         ArrayList<Integer> compatibleEdgeList = compatibilityList.get(e_ind);
-        if(lengths != null && e_ind < lengths.size()) {
+        if (lengths != null && e_ind < lengths.size()) {
             weightApplyElectrostaticForce(1, e_ind, i, sumOfForces, compatibleEdgeList);
-        }else{
+        } else {
             weightApplyElectrostaticForce(1, e_ind, i, sumOfForces, compatibleEdgeList);
         }
 
@@ -196,7 +160,7 @@ public class ForceBundling {
             double y = subdivisionPoints.get(compatibleEdgeList.get(oe)).alv.get(i).y - subdivisionPoints.get(e_ind).alv.get(i).y;
             Vector force = new Vector(x, y);
             if ((Math.abs(force.x) > eps || Math.abs(force.y) > eps)) {
-                Vector source =subdivisionPoints.get(compatibleEdgeList.get(oe)).alv.get(i);
+                Vector source = subdivisionPoints.get(compatibleEdgeList.get(oe)).alv.get(i);
                 Vector target = subdivisionPoints.get(e_ind).alv.get(i);
                 double diff = customEdgeLength(source, target);
                 sumOfForces.x += weight * force.x / diff;
@@ -216,7 +180,7 @@ public class ForceBundling {
             double flen = Math.sqrt(Math.pow(springForce.x + electrostaticForce.x, 2) + Math.pow(springForce.y + electrostaticForce.y, 2));
             int weight = 1;
             if (lengths != null && e_ind < lengths.size()) {
-                weight = lengths.get(i) * 1000000000;
+                weight = lengths.get(e_ind);
             }
             if (flen > 1e-4) {
                 resultingForce.x = S * (springForce.x + weight * electrostaticForce.x) / flen;
@@ -376,7 +340,7 @@ public class ForceBundling {
         System.out.println("deleted: " + deleted);
     }
 
-    ForceBundling forceBundle() {
+    ForceBundlingReturn bundle() {
         double S = S_initial;
         double I = I_initial;
         int P = P_initial;
@@ -403,8 +367,11 @@ public class ForceBundling {
             I = I_rate * I;
             updateEdgeDivisions(P);
         }
-        this.length += dataEdges.size();
-        return this;
+        ForceBundlingReturn forceBundlingReturn = new ForceBundlingReturn();
+        forceBundlingReturn.centerEdges = getCenterEdges();
+        forceBundlingReturn.lengths = lengths;
+        forceBundlingReturn.subdivisionPoints = subdivisionPoints;
+        return forceBundlingReturn;
     }
 
     ArrayList<Edge> getCenterEdges() {
@@ -413,16 +380,16 @@ public class ForceBundling {
         boolean flag;
         for (int i = 0; i < dataEdges.size(); i++) {
             flag = false;
-            for(Map.Entry<Integer, Set<Integer>> entry : map.entrySet()){
-                if(entry.getValue().contains(i)){
-                    if(compatibilityList.get(i).size() > compatibilityList.get(entry.getKey()).size()){
+            for (Map.Entry<Integer, Set<Integer>> entry : map.entrySet()) {
+                if (entry.getValue().contains(i)) {
+                    if (compatibilityList.get(i).size() > compatibilityList.get(entry.getKey()).size()) {
                         entry.setValue(new HashSet<>(compatibilityList.get(i)));
                     }
                     flag = true;
                     break;
                 }
             }
-            if(!flag){
+            if (!flag) {
                 map.put(i, new HashSet<>(compatibilityList.get(i)));
             }
         }
@@ -430,9 +397,9 @@ public class ForceBundling {
         lengths = new ArrayList<>();
         for (Map.Entry<Integer, Set<Integer>> entry : map.entrySet()) {
             int length = 0;
+            Vector centerL = new Vector(dataNodes.get(dataEdges.get(entry.getKey()).sourceNodeInd).x, dataNodes.get(dataEdges.get(entry.getKey()).sourceNodeInd).y);
+            Vector centerR = new Vector(dataNodes.get(dataEdges.get(entry.getKey()).targetNodeInd).x, dataNodes.get(dataEdges.get(entry.getKey()).targetNodeInd).y);
             for (int o = 0; o < entry.getValue().size(); o++) {
-                Vector centerL = new Vector(0.0, 0.0);
-                Vector centerR = new Vector(0.0, 0.0);
                 Vector s = dataNodes.get(dataEdges.get(o).sourceNodeInd);
                 Vector t = dataNodes.get(dataEdges.get(o).targetNodeInd);
                 Vector l = s.x < t.x ? s : t;
@@ -450,4 +417,10 @@ public class ForceBundling {
         System.out.println("lengths size " + lengths.size());
         return centerEdges;
     }
+}
+
+class ForceBundlingReturn extends BundlingAlgorithmReturn {
+    ArrayList<Edge> centerEdges;
+    ArrayList<Integer> lengths;
+    ArrayList<Path> subdivisionPoints;
 }
