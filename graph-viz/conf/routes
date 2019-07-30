@@ -8,5 +8,6 @@ GET     /                           controllers.HomeController.index
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
-GET     /replies                    controllers.GraphController.index(query: String ?= "", lowerLongitude: Double, upperLongitude: Double, lowerLatitude: Double, upperLatitude: Double)
-GET     /query                      controllers.GraphController.reply(query: String ?= "", lowerLongitude: Double, upperLongitude: Double, lowerLatitude: Double, upperLatitude: Double)
+GET     /replies                    controllers.GraphController.index(query: String ?= "")
+GET     /cluster                    controllers.GraphController.cluster(lowerLongitude: Double, lowerLatitude: Double, upperLongitude: Double, upperLatitude: Double, zoom: Integer)
+GET     /edgeCluster                controllers.GraphController.edgeCluster(lowerLongitude: Double, lowerLatitude: Double, upperLongitude: Double, upperLatitude: Double, zoom: Integer, bundling: Integer)

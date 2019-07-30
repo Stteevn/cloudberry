@@ -115,6 +115,17 @@ public class Edge {
         return fromLatitude == edge.fromLatitude && fromLongitude == edge.fromLongitude && toLatitude == edge.toLatitude && toLongitude == edge.toLongitude;
     }
 
+    public boolean cross(Edge e2) {
+        return ((toLongitude - fromLongitude) * (e2.fromLatitude - fromLatitude)
+                - (e2.fromLongitude - fromLongitude) * (toLatitude - fromLatitude))
+                * ((toLongitude - fromLongitude) * (e2.toLatitude - fromLatitude)
+                - (e2.toLongitude - fromLongitude) * (toLatitude - fromLatitude)) < 0
+                && ((e2.toLongitude - e2.fromLongitude) * (fromLatitude - e2.fromLatitude)
+                - (fromLongitude - e2.fromLongitude) * (e2.toLatitude - e2.fromLatitude))
+                * ((e2.toLongitude - e2.fromLongitude) * (toLatitude - e2.fromLatitude)
+                - (toLongitude - e2.fromLongitude) * (e2.toLatitude - e2.fromLatitude)) < 0;
+    }
+
     private int getBlockNum(double longitude, double latitude) {
         return (int) ((longitude + 180) / _epsilon) + (int) ((latitude + 90) / _epsilon) * (int) (360 / _epsilon);
     }
@@ -136,4 +147,7 @@ public class Edge {
                 "}";
     }
 
+    public double getDegree() {
+        return Math.toDegrees(Math.atan((getToLatitude() - getFromLatitude()) / (getToLongitude() - getFromLongitude())));
+    }
 }

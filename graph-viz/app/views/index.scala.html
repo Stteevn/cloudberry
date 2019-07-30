@@ -47,11 +47,33 @@
                     <input type="text" style="width: 40%"
                     class="form-control col-sm-4 ng-pristine ng-untouched ng-empty ng-invalid ng-invalid-required"
                     id="keyword-textbox" placeholder="Search keywords e.g hurricane">
-                    <div class="col-sm-1"></div><span class="col-sm-1 input-group-btn">
-                    <button type="submit" onclick="drawGraph()" class=" btn btn-primary" id="submit-button">
-                        Submit</button></span>
-                    <div class="col-sm-1"></div>
-                    <button type="submit" onclick="newGraph()" class=" btn btn-primary" id="button">Bundling</button></span>
+                    <div class="col-sm-1" style="padding: 0 5px 0 15px">
+                        <div class="form-check" style="margin: 10px 0 0 0">
+                            <input type="checkbox" class="form-check-input" id="checkbox">
+                            <label class="form-check-label" for="exampleCheck1" >Edge</label>
+                        </div>
+                    </div>
+                    <div class="col-sm-1" style="padding: 0 5px">
+                        <div class="form-check" style="margin: 10px 0 0 0">
+                            <input type="checkbox" class="form-check-input" id="bundle">
+                            <label class="form-check-label" for="exampleCheck1" >Bundle</label>
+                        </div>
+                    </div>
+                    <div class="col-sm-1" style="padding: 0 5px">
+                        <div class="form-check" style="margin: 10px 0 0 0">
+                            <input type="checkbox" class="form-check-input" id="point">
+                            <label class="form-check-label" for="exampleCheck1" >Point</label>
+                        </div>
+                    </div>
+                    <div class="col-sm-1">
+                        <button type="submit" onclick="drawGraph()" class=" btn btn-primary" id="submit-button">
+                            Show</button>
+                    </div>
+                </div>
+                <div class="row"></div>
+                <div class="row" style="margin-top: 20px">
+                    <div class="col-md-9"></div>
+                    <div class="col-md-3 pull-right" id="variance">crossed edges: </div>
                 </div>
             </div>
         </body>
@@ -59,9 +81,10 @@
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
         <link href='assets/lib/bootstrap/css/bootstrap.css' rel='stylesheet' />
 
-        <script src="/assets/javascripts/deckgl.min.js"></script>
-        <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.50.0/mapbox-gl.js'></script>
-        <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.50.0/mapbox-gl.css' rel='stylesheet' />
+        <script src="https://unpkg.com/deck.gl@@7.1.10/dist.min.js"></script>
+
+        <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v1.0.0/mapbox-gl.js"></script>
+        <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v1.0.0/mapbox-gl.css' rel='stylesheet' />
 
         <script>
                 mapboxgl.accessToken = 'pk.eyJ1IjoiamVyZW15bGkiLCJhIjoiY2lrZ2U4MWI4MDA4bHVjajc1am1weTM2aSJ9.JHiBmawEKGsn3jiRK_d0Gw';
@@ -70,9 +93,114 @@
                     style: 'mapbox://styles/mapbox/light-v9',
                     center: [-96.35, 39.5],
                     zoom: 3.7,
-                    maxZoom: 5,
-                    minZoom: 2
+                    maxZoom: 17,
+                    minZoom: 0
                 });
+                let zoomLevel = Math.floor(map.getZoom());
+                map.on("moveend", () => {
+                    var bounds = map.getBounds();
+                    var ne = bounds.getNorthEast();
+                    var sw = bounds.getSouthWest();
+                    var maxLng = ne.lng;
+                    var maxLat = ne.lat;
+                    var minLng = sw.lng;
+                    var minLat = sw.lat;
+                    removeLayer();
+                    if (document.getElementById("point").checked === true) {
+                        renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
+                    }
+                    if (document.getElementById("checkbox").checked === true) {
+                        renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
+                    }
+                });
+
+                map.on('zoomend', () => {
+                    const currentZoom = Math.floor(map.getZoom());
+                    var bounds = map.getBounds();
+                    var ne = bounds.getNorthEast();
+                    var sw = bounds.getSouthWest();
+                    var maxLng = ne.lng;
+                    var maxLat = ne.lat;
+                    var minLng = sw.lng;
+                    var minLat = sw.lat;
+                    removeLayer();
+                    if (zoomLevel !== currentZoom) {
+                        if (document.getElementById("point").checked === true) {
+                            renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
+                        }
+                        if (document.getElementById("checkbox").checked === true) {
+                            renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
+                        }
+                        zoomLevel = currentZoom;
+                    }
+                });
+
+                function renderClusterEdges(minLng, minLat, maxLng, maxLat, zoom) {
+                    var request = new XMLHttpRequest();
+                    let url = 'http://localhost:9000/edgeCluster?lowerLongitude=' + minLng + '&lowerLatitude=' + minLat
+                            + '&upperLongitude=' + maxLng + '&upperLatitude=' + maxLat + "&zoom=" + zoom + "&bundling=";
+                    if (document.getElementById("bundle").checked === true) {
+                        url += 1;
+                    } else {
+                        url += 0;
+                    }
+                    request.open('GET', url, false);//for blocking
+                    // console.log(url);
+                    request.send(null);
+                    if (request.status === 200) {
+                        var data = JSON.parse(request.responseText);
+                        console.log(data[data.length - 1]);
+                        if(!$('#bundle').prop('checked')) {
+                            $("#variance").text("crossed edges: " + data[data.length - 1] + "%");
+                        }
+                        data.pop();
+                        const iconLayer = new MapboxLayer({
+                            id: 'edgeCluster',
+                            type: LineLayer,
+                            opacity: 0.1,
+                            data: data,
+                            getSourcePosition: d => d.from,
+                            getTargetPosition: d => d.to,
+                            getWidth: d => {
+                                let temp = Math.min(15, Math.ceil(Math.pow(d.width, 1 / 2)));
+                                return Math.max(temp, 3);
+                            },
+                            getColor: [57, 73, 171]
+                        });
+                        map.addLayer(iconLayer);
+                    }
+                }
+
+                function renderClusterPoints(minLng, minLat, maxLng, maxLat, zoom) {
+                    var request = new XMLHttpRequest();
+                    const url = 'http://localhost:9000/cluster?lowerLongitude=' + minLng + '&lowerLatitude=' + minLat
+                            + '&upperLongitude=' + maxLng + '&upperLatitude=' + maxLat + "&zoom=" + zoom;
+                    request.open('GET', url, false);//for blocking
+                    // console.log(url);
+                    request.send(null);
+                    if (request.status === 200) {
+                        var data = JSON.parse(request.responseText);
+                        // console.log(data);
+                        const iconLayer = new MapboxLayer({
+                            id: 'cluster',
+                            type: ScatterplotLayer,
+                            data: data,
+                            pickable: true,
+                            opacity: 0.8,
+                            stroked: false,
+                            filled: true,
+                            radiusScale: 100,
+                            radiusMinPixels: 5,
+                            radiusMaxPixels: 25,
+                            getPosition: d => d.coordinates,
+                            getRadius: d => d.size,
+                            getFillColor: d => [57, 73, 171],
+                            onHover: d => d.size
+                        });
+                        map.addLayer(iconLayer);
+                    }
+                }
+
                 var query = "";
 
                 function removeLayer() {
@@ -82,16 +210,19 @@
                     if (map.getLayer('layer2') !== undefined) {
                         map.removeLayer('layer2');
                     }
+
+                    if (map.getLayer('edgeCluster') !== undefined) {
+                        map.removeLayer('edgeCluster');
+                    }
+
+                    if (map.getLayer('cluster') !== undefined) {
+                        map.removeLayer('cluster');
+                    }
                 }
 
                 function drawGraph() {
-                    var fstart = performance.now();
-
                     removeLayer();
-
                     query = document.getElementById("keyword-textbox").value;
-
-
                     var bounds = map.getBounds();
                     var ne = bounds.getNorthEast();
                     var sw = bounds.getSouthWest();
@@ -104,65 +235,20 @@
                     request.open('GET', 'http://localhost:9000/replies?query=' + query + '&lowerLongitude=' + sw_lng + '&upperLongitude=' + ne_lng + '&lowerLatitude=' + sw_lat + '&upperLatitude=' + ne_lat, false);//for blocking
                     request.send(null);
                     if (request.status === 200) {
-                        var requestTimeStart = performance.now();
-
-                        var data = JSON.parse(request.responseText);
-                        var parseTimeEnd = performance.now();
-                        const myArcLayer = new MapboxLayer({
-                            id: 'layer',
-                            type: LineLayer,
-                            data: data,
-                            getSourcePosition: d => d.source,
-                            getTargetPosition: d => d.target,
-                            getStrokeWidth: d => Math.min(15, d.width * 2),
-                            getColor: [177, 0, 38],
-                        });
-
-                        map.addLayer(myArcLayer);
-                        var requestTimeEnd = performance.now();
-
-                    }
-                    var fend = performance.now();
-                    console.log("Time to render graph  " + (requestTimeEnd - parseTimeEnd) + " ms");
-                    console.log("Time to parse JSON " + (parseTimeEnd - requestTimeStart) + " ms");
-                    console.log("Total time of receiving data and finishing in deckGL is " + (requestTimeEnd-requestTimeStart) + " ms");
-                    console.log("Total time of drawGraph() is " + (fend-fstart) + " ms");
-                };
-
-                function newGraph() {
-                    var fstart = performance.now();
-
-                    removeLayer();
-
-                    query = document.getElementById("keyword-textbox").value;
-
-                    var bounds = map.getBounds();
-                    var ne = bounds.getNorthEast();
-                    var sw = bounds.getSouthWest();
-                    var ne_lng = ne.lng
-                    var ne_lat = ne.lat
-                    var sw_lng = sw.lng
-                    var sw_lat = sw.lat
-
-                    var request = new XMLHttpRequest();
-                    request.open('GET', 'http://localhost:9000/query?query=' + query + '&lowerLongitude=' + sw_lng + '&upperLongitude=' + ne_lng + '&lowerLatitude=' + sw_lat + '&upperLatitude=' + ne_lat, false);//for blocking
-                    request.send(null);
-                    if (request.status === 200) {
-                        var requestTimeStart = performance.now();
-                        var data = JSON.parse(request.responseText);
-                        console.log(data);
-                        const layer = new MapboxLayer({
-                            id: 'layer2',
-                            type: LineLayer,
-                            data: data,
-                            getSourcePosition: d => d.from,
-                            getTargetPosition: d => d.to,
-                            getStrokeWidth: d => Math.min(15, Math.ceil(Math.pow(d.width, 1/3))),
-                            getColor: [177, 0, 38]
-                        });
-                        map.addLayer(layer);
+                        var bounds = map.getBounds();
+                        var ne = bounds.getNorthEast();
+                        var sw = bounds.getSouthWest();
+                        var maxLng = ne.lng;
+                        var maxLat = ne.lat;
+                        var minLng = sw.lng;
+                        var minLat = sw.lat;
+                        renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
+                        if (document.getElementById("checkbox").checked === true) {
+                            renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
+                        }
                     }
                 }
+
         </script>
 
     </html>
