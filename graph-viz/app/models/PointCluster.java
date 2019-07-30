@@ -1,8 +1,6 @@
 package models;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Stack;
 
 public class PointCluster {
 
@@ -114,7 +112,7 @@ public class PointCluster {
             return results;
         }
         KdTree kdTree = trees[limitZoom(zoom + 1)];
-        ArrayList<Cluster> neighbors = kdTree.range(new RectHV(lngX(minLongitude), latY(maxLatitude), lngX(maxLongitude), latY(minLatitude)));
+        ArrayList<Cluster> neighbors = kdTree.range(new Rectangle(lngX(minLongitude), latY(maxLatitude), lngX(maxLongitude), latY(minLatitude)));
         ArrayList<Cluster> clusters = new ArrayList<>();
         for (int i = 0; i < neighbors.size(); i++) {
             Cluster neighbor = neighbors.get(i);

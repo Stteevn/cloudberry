@@ -6,12 +6,12 @@ import java.util.Comparator;
 public class KdTree {
     public static class Node {
         private Cluster point;
-        private RectHV rect;
+        private Rectangle rect;
         private boolean isVertical;
         private Node left;
         private Node right;
 
-        private Node(Cluster p, boolean vertical, Node left, Node right, RectHV rectangle) {
+        private Node(Cluster p, boolean vertical, Node left, Node right, Rectangle rectangle) {
             this.point = p;
             this.isVertical = vertical;
             this.left = left;
@@ -19,7 +19,7 @@ public class KdTree {
             this.rect = rectangle;
         }
 
-        public RectHV getRect() {
+        public Rectangle getRect() {
             return this.rect;
         }
 
@@ -67,7 +67,7 @@ public class KdTree {
     public void insert(Cluster p) {
         // base case: empty tree
         if (size == 0) {
-            RectHV rect = new RectHV(0.0, 0.0, 1.0, 1.0);
+            Rectangle rect = new Rectangle(0.0, 0.0, 1.0, 1.0);
             root = new Node(p, true, null, null, rect);
             size++;
             return;
@@ -92,13 +92,13 @@ public class KdTree {
             if (comparator.compare(p, n.getPoint()) < 0) {
                 // if the left point is null then create new node and set it
                 if (n.getLeft() == null) {
-                    RectHV rect = null;
+                    Rectangle rect = null;
                     if (n.vertical()) {
                         // point to left of current point
-                        rect = new RectHV(n.getRect().xmin(), n.getRect().ymin(), n.getPoint().x(), n.getRect().ymax());
+                        rect = new Rectangle(n.getRect().xmin(), n.getRect().ymin(), n.getPoint().x(), n.getRect().ymax());
                     } else {
                         // point at bottom of current point
-                        rect = new RectHV(n.getRect().xmin(), n.getRect().ymin(), n.getRect().xmax(), n.getPoint().y());
+                        rect = new Rectangle(n.getRect().xmin(), n.getRect().ymin(), n.getRect().xmax(), n.getPoint().y());
                     }
                     // create new node to be inserted to
                     Node leftNode = new Node(p, !n.vertical(), null, null, rect);
@@ -111,14 +111,14 @@ public class KdTree {
             } else {
                 // reached end so insert new node to right
                 if (n.getRight() == null) {
-                    RectHV rect = null;
+                    Rectangle rect = null;
 
                     if (n.vertical()) {
                         // right to vertical point
-                        rect = new RectHV(n.getPoint().x(), n.getRect().ymin(), n.getRect().xmax(), n.getRect().ymax());
+                        rect = new Rectangle(n.getPoint().x(), n.getRect().ymin(), n.getRect().xmax(), n.getRect().ymax());
                     } else {
                         // top of horizontal point
-                        rect = new RectHV(n.getRect().xmin(), n.getPoint().y(), n.getRect().xmax(), n.getRect().ymax());
+                        rect = new Rectangle(n.getRect().xmin(), n.getPoint().y(), n.getRect().xmax(), n.getRect().ymax());
                     }
                     Node rightNode = new Node(p, !n.vertical(), null, null, rect);
                     n.setRightNode(rightNode);
@@ -159,13 +159,13 @@ public class KdTree {
         }
     }
 
-    public ArrayList<Cluster> range(RectHV rect) {
+    public ArrayList<Cluster> range(Rectangle rect) {
         ArrayList<Cluster> pointsInRange = new ArrayList<>();
         rangeRecursive(pointsInRange, rect, root);
         return pointsInRange;
     }
 
-    private void rangeRecursive(ArrayList<Cluster> rangeList, RectHV rect, Node n) {
+    private void rangeRecursive(ArrayList<Cluster> rangeList, Rectangle rect, Node n) {
         if (n == null)
             return;
 

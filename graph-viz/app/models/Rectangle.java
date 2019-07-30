@@ -1,11 +1,11 @@
 package models;
 
-public class RectHV {
+public class Rectangle {
     private final double xmin, ymin;   // minimum x- and y-coordinates
     private final double xmax, ymax;   // maximum x- and y-coordinates
 
     // construct the axis-aligned rectangle [xmin, xmax] x [ymin, ymax]
-    public RectHV(double xmin, double ymin, double xmax, double ymax) {
+    public Rectangle(double xmin, double ymin, double xmax, double ymax) {
         this.xmin = xmin;
         this.ymin = ymin;
         this.xmax = xmax;
@@ -39,7 +39,7 @@ public class RectHV {
     }
 
     // does this axis-aligned rectangle intersect that one?
-    public boolean intersects(RectHV that) {
+    public boolean intersects(Rectangle that) {
         return this.xmax >= that.xmin && this.ymax >= that.ymin
                 && that.xmax >= this.xmin && that.ymax >= this.ymin;
     }
@@ -70,7 +70,7 @@ public class RectHV {
         if (y == this) return true;
         if (y == null) return false;
         if (y.getClass() != this.getClass()) return false;
-        RectHV that = (RectHV) y;
+        Rectangle that = (Rectangle) y;
         if (this.xmin != that.xmin) return false;
         if (this.ymin != that.ymin) return false;
         if (this.xmax != that.xmax) return false;
