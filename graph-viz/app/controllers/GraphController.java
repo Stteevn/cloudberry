@@ -97,7 +97,7 @@ public class GraphController extends Controller {
                 forceBundling = new ForceBundling(alldataNodes, alldataEdges);
             } else {
                 prevLength = fb.lengths.size();
-                forceBundling = new ForceBundling(alldataNodes, alldataEdges, fb.centerL, fb.centerR, fb.length);
+                forceBundling = new ForceBundling(alldataNodes, alldataEdges, fb.centerL, fb.centerR, fb.length, fb.lengths);
             }
             fb = forceBundling.forceBundle();
             ArrayList<Path> pathResult = fb.subdivisionPoints;

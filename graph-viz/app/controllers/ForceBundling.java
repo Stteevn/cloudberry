@@ -50,7 +50,7 @@ public class ForceBundling {
     final double C = 5;
     final double I_initial = 40;
     final double I_rate = 2.0 / 3.0;
-    final double compatibility_threshold = 0.75;
+    double compatibility_threshold = 0.75;
     final double eps = 1e-6;
     Vector centerL;
     Vector centerR;
@@ -77,12 +77,13 @@ public class ForceBundling {
         }
     }
 
-    public ForceBundling(ArrayList<Vector> dataNodes, ArrayList<EdgeVector> dataEdges, Vector cL, Vector cR, int length) {
+    public ForceBundling(ArrayList<Vector> dataNodes, ArrayList<EdgeVector> dataEdges, Vector cL, Vector cR, int length, ArrayList<Integer> lengths) {
         this.dataNodes = dataNodes;
         this.dataEdges = dataEdges;
         this.centerL = cL;
         this.centerR = cR;
         this.length = length;
+        this.lengths = lengths;
         for (int o = 0; o < dataEdges.size(); o++) {
             Vector s = dataNodes.get(dataEdges.get(o).sourceNodeInd);
             Vector t = dataNodes.get(dataEdges.get(o).targetNodeInd);
@@ -216,7 +217,7 @@ public class ForceBundling {
             double flen = Math.sqrt(Math.pow(springForce.x + electrostaticForce.x, 2) + Math.pow(springForce.y + electrostaticForce.y, 2));
             int weight = 1;
             if (lengths != null && e_ind < lengths.size()) {
-                weight = lengths.get(i) * 1000000000;
+                weight = lengths.get(e_ind);
             }
             if (flen > 1e-4) {
                 resultingForce.x = S * (springForce.x + weight * electrostaticForce.x) / flen;
@@ -313,6 +314,12 @@ public class ForceBundling {
     void computeCompatibilityLists() {
         for (int e = 0; e < dataEdges.size() - 1; e++) {
             for (int oe = e + 1; oe < dataEdges.size(); oe++) {
+                if (lengths != null && e < lengths.size()) {
+                    compatibility_threshold = 0.5;
+                }
+                else {
+                    compatibility_threshold = 0.75;
+                }
                 if (areCompatible(dataEdges.get(e), dataEdges.get(oe))) {
                     compatibilityList.get(e).add(oe);
                     compatibilityList.get(oe).add(e);
@@ -422,7 +429,7 @@ public class ForceBundling {
                     break;
                 }
             }
-            if(!flag){
+            if(!flag && compatibilityList.get(i).size() != 0){
                 map.put(i, new HashSet<>(compatibilityList.get(i)));
             }
         }
@@ -430,9 +437,9 @@ public class ForceBundling {
         lengths = new ArrayList<>();
         for (Map.Entry<Integer, Set<Integer>> entry : map.entrySet()) {
             int length = 0;
+            Vector centerL = new Vector(dataNodes.get(dataEdges.get(entry.getKey()).sourceNodeInd).x, dataNodes.get(dataEdges.get(entry.getKey()).sourceNodeInd).y);
+            Vector centerR = new Vector(dataNodes.get(dataEdges.get(entry.getKey()).targetNodeInd).x, dataNodes.get(dataEdges.get(entry.getKey()).targetNodeInd).y);
             for (int o = 0; o < entry.getValue().size(); o++) {
-                Vector centerL = new Vector(0.0, 0.0);
-                Vector centerR = new Vector(0.0, 0.0);
                 Vector s = dataNodes.get(dataEdges.get(o).sourceNodeInd);
                 Vector t = dataNodes.get(dataEdges.get(o).targetNodeInd);
                 Vector l = s.x < t.x ? s : t;
