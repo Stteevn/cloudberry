@@ -49,19 +49,19 @@
                         id="keyword-textbox" placeholder="Search keywords e.g hurricane">
                         <div class="col-sm-1" style="padding: 0 5px 0 15px">
                             <div class="form-check" style="margin: 10px 0 0 0">
-                                <input type="checkbox" class="form-check-input" id="checkbox">
+                                <input type="checkbox" class="form-check-input" id="checkbox" onchange="checkbox_change()">
                                 <label class="form-check-label" for="exampleCheck1" >Edge</label>
                             </div>
                         </div>
                         <div class="col-sm-1" style="padding: 0 5px">
                             <div class="form-check" style="margin: 10px 0 0 0">
-                                <input type="checkbox" class="form-check-input" id="bundle">
+                                <input type="checkbox" class="form-check-input" id="bundle" onchange="bundle_change()">
                                 <label class="form-check-label" for="exampleCheck1" >Bundle</label>
                             </div>
                         </div>
                         <div class="col-sm-1" style="padding: 0 5px">
                             <div class="form-check" style="margin: 10px 0 0 0">
-                                <input type="checkbox" class="form-check-input" id="point">
+                                <input type="checkbox" class="form-check-input" id="point" onchange="point_change()">
                                 <label class="form-check-label" for="exampleCheck1" >Point</label>
                             </div>
                         </div>
@@ -91,9 +91,11 @@
                         maxZoom: 17,
                         minZoom: 0
                     });
+
                     var current_timestamp;
                     let zoomLevel = Math.floor(map.getZoom());
                     var socket;
+
                     map.on("moveend", () => {
                         var bounds = map.getBounds();
                         var ne = bounds.getNorthEast();
@@ -105,9 +107,13 @@
                         // removeLayer();
                         if (document.getElementById("point").checked === true) {
                             renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
+                        } else {
+                            removeClusterLayer();
                         }
                         if (document.getElementById("checkbox").checked === true) {
                             renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
+                        } else {
+                            removeEdgeClusterLayer();
                         }
                     });
 
@@ -124,9 +130,13 @@
                         if (zoomLevel !== currentZoom) {
                             if (document.getElementById("point").checked === true) {
                                 renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
+                            } else {
+                                removeClusterLayer();
                             }
                             if (document.getElementById("checkbox").checked === true) {
                                 renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
+                            } else {
+                                removeEdgeClusterLayer();
                             }
                             zoomLevel = currentZoom;
                         }
@@ -311,6 +321,57 @@
                             }
 
 
+                        }
+                    }
+
+                    function checkbox_change() {
+                        var bounds = map.getBounds();
+                        var ne = bounds.getNorthEast();
+                        var sw = bounds.getSouthWest();
+                        var maxLng = ne.lng;
+                        var maxLat = ne.lat;
+                        var minLng = sw.lng;
+                        var minLat = sw.lat;
+                        if(document.getElementById("checkbox").checked === true) {
+                            renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
+                        } else {
+                            removeEdgeClusterLayer();
+                        }
+                    }
+
+                    function bundle_change() {
+                        var bounds = map.getBounds();
+                        var ne = bounds.getNorthEast();
+                        var sw = bounds.getSouthWest();
+                        var maxLng = ne.lng;
+                        var maxLat = ne.lat;
+                        var minLng = sw.lng;
+                        var minLat = sw.lat;
+                        if(document.getElementById("checkbox").checked === false){
+                            $('#bundle').prop('checked', false);
+                            $('#bundle').attr('checked', false);
+                            alert("Please check with edge.");
+                            return;
+                        }
+                        if(document.getElementById("bundle").checked === true) {
+                            renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
+                        } else {
+                            removeEdgeClusterLayer();
+                        }
+                    }
+
+                    function point_change() {
+                        var bounds = map.getBounds();
+                        var ne = bounds.getNorthEast();
+                        var sw = bounds.getSouthWest();
+                        var maxLng = ne.lng;
+                        var maxLat = ne.lat;
+                        var minLng = sw.lng;
+                        var minLat = sw.lat;
+                        if(document.getElementById("point").checked === true) {
+                            renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
+                        } else {
+                            removeClusterLayer();
                         }
                     }
 
