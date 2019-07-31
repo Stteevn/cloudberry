@@ -3,12 +3,10 @@ package controllers;
 import Utils.PropertiesUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import models.Cluster;
 import models.PointCluster;
-import play.libs.Json;
 import play.mvc.*;
 import actors.BundleActor;
 
@@ -29,7 +27,6 @@ public class GraphController extends Controller {
     // configuration properties
     private Properties configProps;
     private Set<Edge> edgeSet = new HashSet<>();
-    //    private ArrayList<Edge> allEdges;
     // indicates the sending process is completed
     private final String finished = "Y";
     // indicates the sending process is not completed
@@ -44,7 +41,7 @@ public class GraphController extends Controller {
 
     public void dispatcher(String query, BundleActor bundleActor) {
         ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode jsonNode = null;
+        JsonNode jsonNode;
         int option = -1;
         try {
             jsonNode = objectMapper.readTree(query);
@@ -95,7 +92,6 @@ public class GraphController extends Controller {
             objectNode = queryResult(query, endDate, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, timestamp, objectNode);
             objectNode.put("option", 0);
             json = objectNode.toString();
-            System.out.println(json);
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -144,14 +140,13 @@ public class GraphController extends Controller {
                 double fromLatitude = resultSet.getDouble("from_latitude");
                 double toLongitude = resultSet.getDouble("to_longitude");
                 double toLatitude = resultSet.getDouble("to_latitude");
+                Edge currentEdge = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
+                if(edgeSet.contains(currentEdge)) continue;
                 points.add(new Cluster(fromLongitude, fromLatitude));
                 points.add(new Cluster(toLongitude, toLatitude));
-                Edge currentEdge = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
                 edgeSet.add(currentEdge);
             }
             pointCluster.load(points);
-            ArrayList<Cluster> clusters = pointCluster.getClusters(new double[]{-180, -90, 180, 90}, 17);
-            System.out.println(clusters.size());
             resultSet.close();
             state.close();
             conn.close();
@@ -266,47 +261,19 @@ public class GraphController extends Controller {
         ObjectNode objectNode = objectMapper.createObjectNode();
         ArrayNode arrayNode = objectMapper.createArrayNode();
         if (pointCluster != null) {
-            ArrayList<Cluster> clusters = pointCluster.getClusters(new double[]{-180, -90, 180, 90}, zoom);
             HashMap<Edge, Integer> edges = new HashMap<>();
-            HashMap<EdgeVector, Integer> edgeVectors = new HashMap<>();
             for (Edge edge : edgeSet) {
-                int i;
-                int j;
-                for (i = 0; i < clusters.size(); i++) {
-                    Cluster cluster = clusters.get(i);
-                    if (sqDistance(cluster.x(), cluster.y(), PointCluster.lngX(edge.getFromLongitude()), PointCluster.latY(edge.getFromLatitude()))
-                            <= Math.pow(pointCluster.getZoomRadius(zoom), 2)) {
-                        break;
-                    }
-                }
-                for (j = 0; j < clusters.size(); j++) {
-                    Cluster cluster = clusters.get(j);
-                    if (sqDistance(cluster.x(), cluster.y(), PointCluster.lngX(edge.getToLongitude()), PointCluster.latY(edge.getToLatitude()))
-                            <= Math.pow(pointCluster.getZoomRadius(zoom), 2)) {
-                        break;
-                    }
-                }
-                Edge e;
-                if (i >= clusters.size() || j >= clusters.size()) {
-                    continue;
-                } else if (i == j) {
-                    continue;
-                }
-                double fromLongitude = PointCluster.xLng(clusters.get(i).x());
-                double fromLatitude = PointCluster.yLat(clusters.get(i).y());
-                double toLongitude = PointCluster.xLng(clusters.get(j).x());
-                double toLatitude = PointCluster.yLat(clusters.get(j).y());
+                Cluster fromCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getFromLongitude()), PointCluster.latY(edge.getFromLatitude())), zoom);
+                Cluster toCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getToLongitude()), PointCluster.latY(edge.getToLatitude())), zoom);
+                double fromLongitude = PointCluster.xLng(fromCluster.x());
+                double fromLatitude = PointCluster.yLat(fromCluster.y());
+                double toLongitude = PointCluster.xLng(toCluster.x());
+                double toLatitude = PointCluster.yLat(toCluster.y());
                 if ((lowerLongitude <= fromLongitude && fromLongitude <= upperLongitude
                         && lowerLatitude <= fromLatitude && fromLatitude <= upperLatitude)
                         || (lowerLongitude <= toLongitude && toLongitude <= upperLongitude
                         && lowerLatitude <= toLatitude && toLatitude <= upperLatitude)) {
-                    e = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
-                    EdgeVector edgeVector = new EdgeVector(i, j);
-                    if (edgeVectors.containsKey(edgeVector)) {
-                        edgeVectors.put(edgeVector, edgeVectors.get(edgeVector) + 1);
-                    } else {
-                        edgeVectors.put(edgeVector, 1);
-                    }
+                    Edge e = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
                     if (edges.containsKey(e)) {
                         edges.put(e, edges.get(e) + 1);
                     } else {
@@ -366,7 +333,6 @@ public class GraphController extends Controller {
         objectNode.put("option", 2);
         objectNode.put("data", json);
         objectNode.put("timestamp", timestamp);
-        System.out.println("json is: " + objectNode.toString());
         bundleActor.returnData(objectNode.toString());
     }
 
@@ -376,22 +342,6 @@ public class GraphController extends Controller {
 
 
     private double okBundle(Edge[] edges) {
-        /*
-        double averageAngle = 0;
-        for (Edge e : edges) {
-            averageAngle += Math.abs(e.getDegree());
-        }
-        averageAngle /= edges.length;
-        double variance = 0;
-        for (Edge e : edges) {
-            variance += Math.pow((Math.abs(e.getDegree()) - averageAngle), 2);
-        }
-        System.out.printf("Variance * number of edges is %.4f, ", variance);
-        variance /= edges.length;
-        System.out.printf("Variance of angle is %.4f\n", variance);
-        re turn variance;
-        */
-
         int count = 0;
         int tot = 0;
         for (int i = 0; i < edges.length; i++) {

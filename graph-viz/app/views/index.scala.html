@@ -70,11 +70,6 @@
                                 Show</button>
                         </div>
                     </div>
-                    <div class="row"></div>
-                    <div class="row" style="margin-top: 20px">
-                        <div class="col-md-9"></div>
-                        <div class="col-md-3 pull-right" id="variance">crossed edges: </div>
-                    </div>
                 </div>
             </body>
 
@@ -214,7 +209,6 @@
                             getPosition: d => d.coordinates,
                             getRadius: d => d.size,
                             getFillColor: d => [57, 73, 171],
-                            onHover: d => d.size
                         });
                         removeClusterLayer();
                         map.addLayer(iconLayer);

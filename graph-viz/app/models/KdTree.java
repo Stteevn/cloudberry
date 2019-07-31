@@ -1,7 +1,7 @@
 package models;
 
-import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.ArrayList;
 
 public class KdTree {
     public static class Node {
@@ -76,12 +76,13 @@ public class KdTree {
         // point at root initially
         Node n = root;
 
-        Comparator<Cluster> comparator = Cluster.Y_ORDER;
+        Comparator<Cluster> comparator;
 
         while (n != null) {
             // return if point is already in the tree
-            if (n.getPoint().equals(p))
+            if (n.getPoint().equals(p)) {
                 return;
+            }
             // if we are at a vertical node
             if (n.vertical()) {
                 comparator = Cluster.X_ORDER;
@@ -156,6 +157,32 @@ public class KdTree {
             return containsRecursive(node.getLeft(), point);
         } else {
             return containsRecursive(node.getRight(), point);
+        }
+    }
+
+    public Cluster findPoint(Cluster point) {
+        return findPointRecursive(root, point);
+    }
+
+    private Cluster findPointRecursive(Node node, Cluster point) {
+        if (node == null) {
+            return null;
+        }
+        Cluster nPoint = node.getPoint();
+        if (node.getPoint().equals(point)) {
+            return node.getPoint();
+        }
+        Comparator<Cluster> comparator;
+        if (node.vertical()) {
+            comparator = Cluster.X_ORDER;
+        } else {
+            comparator = Cluster.Y_ORDER;
+        }
+
+        if (comparator.compare(point, nPoint) < 0) {
+            return findPointRecursive(node.getLeft(), point);
+        } else {
+            return findPointRecursive(node.getRight(), point);
         }
     }
 

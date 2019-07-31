@@ -8,7 +8,7 @@ public class PointCluster {
     private int maxZoom;
     private double radius = 80;
     private double extent = 512;
-    private KdTree[] trees;
+    public KdTree[] trees;
 
     public PointCluster(int minZoom, int maxZoom) {
         this.minZoom = minZoom;
@@ -26,13 +26,14 @@ public class PointCluster {
     }
 
     public void insert(Cluster point) {
+        trees[maxZoom + 1].insert(point);
         for (int z = maxZoom; z >= minZoom; z--) {
-            ArrayList<Cluster> neighbors = trees[z + 1].rangeRadius(point.x(), point.y(), getZoomRadius(z));
+            ArrayList<Cluster> neighbors = trees[z].rangeRadius(point.x(), point.y(), getZoomRadius(z));
             if (neighbors.isEmpty()) {
                 Cluster c = new Cluster(point.x(), point.y());
                 c.setZoom(z);
                 point.parent = c;
-                trees[z + 1].insert(c);
+                trees[z].insert(c);
                 point = c;
             } else {
                 Cluster neighbor = null;
@@ -55,47 +56,8 @@ public class PointCluster {
         }
     }
 
-    public double getZoomRadius(int zoom) {
+    private double getZoomRadius(int zoom) {
         return radius / (extent * Math.pow(2, zoom));
-    }
-
-    public ArrayList<Cluster> cluster(ArrayList<Cluster> clusters, int zoom) {
-        ArrayList<Cluster> results = new ArrayList<>();
-        double r = getZoomRadius(zoom);
-        for (int i = 0; i < clusters.size(); i++) {
-            Cluster p = clusters.get(i);
-            if (p.getZoom() <= zoom) continue;
-            p.setZoom(zoom);
-            KdTree kdTree = trees[zoom + 1];
-            ArrayList<Cluster> neighbors = kdTree.rangeRadius(p.x(), p.y(), r);
-            int numPoints = p.getNumPoints() > 0 ? p.getNumPoints() : 1;
-            double wx = p.x() * numPoints;
-            double wy = p.y() * numPoints;
-
-            Cluster c = new Cluster(p.x(), p.y());
-            p.parent = c;
-            for (int j = 0; j < neighbors.size(); j++) {
-                Cluster neighbor = neighbors.get(j);
-                if (neighbor.getZoom() <= zoom) continue;
-                neighbor.setZoom(zoom);
-                int numPoints2 = neighbor.getNumPoints() > 0 ? neighbor.getNumPoints() : 1;
-                wx += neighbor.x() * numPoints2;
-                wy += neighbor.y() * numPoints2;
-                numPoints += numPoints2;
-                neighbor.parent = c;
-            }
-
-            if (numPoints == 1) {
-                results.add(c);
-            } else {
-                c.setX(wx / numPoints);
-                c.setY(wy / numPoints);
-                c.setNumPoints(numPoints);
-                results.add(c);
-            }
-        }
-        System.out.printf("finish clustering %d points for %d zoom\n", results.size(), zoom);
-        return results;
     }
 
     public ArrayList<Cluster> getClusters(double[] bbox, int zoom) {
@@ -111,7 +73,7 @@ public class PointCluster {
             results.addAll(getClusters(new double[]{-180, minLatitude, maxLongitude, maxLatitude}, zoom));
             return results;
         }
-        KdTree kdTree = trees[limitZoom(zoom + 1)];
+        KdTree kdTree = trees[limitZoom(zoom)];
         ArrayList<Cluster> neighbors = kdTree.range(new Rectangle(lngX(minLongitude), latY(maxLatitude), lngX(maxLongitude), latY(minLatitude)));
         ArrayList<Cluster> clusters = new ArrayList<>();
         for (int i = 0; i < neighbors.size(); i++) {
@@ -129,6 +91,17 @@ public class PointCluster {
         return Math.max(minZoom, Math.min(z, maxZoom + 1));
     }
 
+
+    public Cluster parentCluster(Cluster cluster, int zoom) {
+        Cluster c = trees[maxZoom + 1].findPoint(cluster);
+        while (c != null) {
+            if (c.getZoom() == zoom) {
+                break;
+            }
+            c = c.parent;
+        }
+        return c;
+    }
 
     // longitude/latitude to spherical mercator in [0..1] range
     public static double lngX(double lng) {
