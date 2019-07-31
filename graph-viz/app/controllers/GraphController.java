@@ -1,14 +1,21 @@
 package controllers;
 
+import Utils.PropertiesUtil;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import models.Cluster;
 import models.PointCluster;
+import play.libs.Json;
 import play.mvc.*;
+import actors.BundleActor;
 
+import java.io.IOException;
 import java.sql.*;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -19,7 +26,14 @@ import java.util.*;
 public class GraphController extends Controller {
 
     private PointCluster pointCluster = new PointCluster(0, 17);
+    // configuration properties
+    private Properties configProps;
     private Set<Edge> edgeSet = new HashSet<>();
+    //    private ArrayList<Edge> allEdges;
+    // indicates the sending process is completed
+    private final String finished = "Y";
+    // indicates the sending process is not completed
+    private final String unfinished = "N";
 
     /**
      * An action that renders an HTML page with a welcome message. The configuration
@@ -28,25 +42,102 @@ public class GraphController extends Controller {
      * <code>/</code>.
      */
 
-    public Result index(String query) {
+    public void dispatcher(String query, BundleActor bundleActor) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode jsonNode = null;
+        int option = -1;
+        try {
+            jsonNode = objectMapper.readTree(query);
+            option = Integer.parseInt(jsonNode.get("option").asText());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        switch (option) {
+            case 0:
+                getData(query, bundleActor);
+                break;
+            case 1:
+                cluster(query, bundleActor);
+                break;
+            case 2:
+                edgeCluster(query, bundleActor);
+                break;
+            default:
+                System.err.println("Internal error: no option included");
+                break;
+        }
+    }
+
+    public void getData(String query, BundleActor bundleActor) {
+        // parse the json and initialize the variables
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode jsonNode = null;
+        try {
+            jsonNode = objectMapper.readTree(query);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        double lowerLongitude = Double.parseDouble(jsonNode.get("lowerLongitude").asText());
+        double upperLongitude = Double.parseDouble(jsonNode.get("upperLongitude").asText());
+        double lowerLatitude = Double.parseDouble(jsonNode.get("lowerLatitude").asText());
+        double upperLatitude = Double.parseDouble(jsonNode.get("upperLatitude").asText());
+        String timestamp = jsonNode.get("timestamp").asText();
+
+        String endDate = null;
+        query = jsonNode.get("query").asText();
+        if (jsonNode.has("date")) {
+            endDate = jsonNode.get("date").asText();
+        }
         String json = "";
-        long startIndex = System.currentTimeMillis();
+        ObjectNode objectNode = objectMapper.createObjectNode();
+        try {
+            Edge.set_epsilon(9);
+            objectNode = queryResult(query, endDate, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, timestamp, objectNode);
+            objectNode.put("option", 0);
+            json = objectNode.toString();
+            System.out.println(json);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+        bundleActor.returnData(json);
+    }
+
+    private ObjectNode queryResult(String query, String endDate, double lowerLongitude, double upperLongitude, double lowerLatitude,
+                                   double upperLatitude, String timestamp, ObjectNode objectNode) {
+        String firstDate = null;
+        String lastDate = null;
+        int queryPeriod = 0;
+        try {
+            configProps = PropertiesUtil.loadProperties(configProps);
+            firstDate = configProps.getProperty("firstDate");
+            lastDate = configProps.getProperty("lastDate");
+            queryPeriod = Integer.parseInt(configProps.getProperty("queryPeriod"));
+        } catch (IOException ex) {
+            System.out.println("The config.properties file does not exist, default properties loaded.");
+        }
+
+        getData(query, endDate, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, timestamp, objectNode, firstDate, lastDate, queryPeriod);
+        return objectNode;
+    }
+
+    private void getData(String query, String endDate, double lowerLongitude, double upperLongitude, double lowerLatitude, double upperLatitude, String timestamp, ObjectNode objectNode, String firstDate, String lastDate, int queryPeriod) {
         Connection conn;
         PreparedStatement state;
         ResultSet resultSet;
         try {
-            Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/graphtweet", "graphuser",
-                    "graphuser");
-            String searchQuery = "select " + "from_longitude, from_latitude, " + "to_longitude, to_latitude "
-                    + "from replytweets where (" + "to_tsvector('english', from_text) " + "@@ to_tsquery( ? ) or "
-                    + "to_tsvector('english', to_text) "
-                    + "@@ to_tsquery( ? ))";
-            state = conn.prepareStatement(searchQuery);
-            state.setString(1, query);
-            state.setString(2, query);
+            conn = getConnection();
+
+            String date = getDate(endDate, firstDate);
+            String start = date;
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
+            Calendar c = incrementCalendar(queryPeriod, date, sdf);
+            date = sdf.format(c.getTime());
+            Calendar lastDateCalendar = Calendar.getInstance();
+            lastDateCalendar.setTime(sdf.parse(lastDate));
+
+            bindFields(objectNode, timestamp, date, c, lastDateCalendar);
+            state = prepareState(query, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, conn, date, start);
             resultSet = state.executeQuery();
-            long endData = System.currentTimeMillis();
             ArrayList<Cluster> points = new ArrayList<>();
             while (resultSet.next()) {
                 double fromLongitude = resultSet.getDouble("from_longitude");
@@ -58,87 +149,85 @@ public class GraphController extends Controller {
                 Edge currentEdge = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
                 edgeSet.add(currentEdge);
             }
-            long startParse = System.currentTimeMillis();
-            ObjectMapper objectMapper = new ObjectMapper();
-            SimpleModule module = new SimpleModule();
-            module.addSerializer(Edge.class, new EdgeSerializer());
-            objectMapper.registerModule(module);
-            json = objectMapper.writeValueAsString(edgeSet);
-            long startCluster = System.currentTimeMillis();
             pointCluster.load(points);
-            long endIndex = System.currentTimeMillis();
-            System.out.println("Total time in executing query in database is " + (endData - startIndex) + " ms");
-            System.out.println("Total time in parsing data from Json is " + (endIndex - startParse) + " ms");
-            System.out.printf("Total time in clustering points is %d ms\n", endIndex - startCluster);
-            System.out.println("Total time in running index() is " + (endIndex - startIndex) + " ms");
-            System.out.println("Total number of records " + edgeSet.size());
+            ArrayList<Cluster> clusters = pointCluster.getClusters(new double[]{-180, -90, 180, 90}, 17);
+            System.out.println(clusters.size());
             resultSet.close();
             state.close();
             conn.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return ok(json);
     }
 
-    private HashMap<Integer, Edge> queryResult(String query, double lowerLongitude, double upperLongitude, double lowerLatitude,
-                                               double upperLatitude) {
-        Connection conn;
+    private PreparedStatement prepareState(String query, double lowerLongitude, double upperLongitude, double lowerLatitude, double upperLatitude, Connection conn, String date, String start) throws SQLException {
         PreparedStatement state;
-        ResultSet resultSet;
-        HashMap<Integer, Edge> edges = new HashMap<>();
-        try {
-            Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/graphtweet", "graphuser",
-                    "graphuser");
-            String searchQuery = "select " + "from_longitude, from_latitude, " + "to_longitude, to_latitude "
-                    + "from replytweets where (" + "to_tsvector('english', from_text) " + "@@ to_tsquery( ? ) or "
-                    + "to_tsvector('english', to_text) "
-                    + "@@ to_tsquery( ? )) and ((from_longitude between ? AND ? AND from_latitude between ? AND ?) OR"
-                    + " (to_longitude between ? AND ? AND to_latitude between ? AND ?)) AND sqrt(pow(from_latitude - to_latitude, 2) + pow(from_longitude - to_longitude, 2)) >= ?;";
-            state = conn.prepareStatement(searchQuery);
-            state.setString(1, query);
-            state.setString(2, query);
-            state.setDouble(3, lowerLongitude);
-            state.setDouble(4, upperLongitude);
-            state.setDouble(5, lowerLatitude);
-            state.setDouble(6, upperLatitude);
-            state.setDouble(7, lowerLongitude);
-            state.setDouble(8, upperLongitude);
-            state.setDouble(9, lowerLatitude);
-            state.setDouble(10, upperLatitude);
-            state.setDouble(11, Math.sqrt(Math.pow(upperLongitude - lowerLongitude, 2) + Math.pow(upperLatitude - lowerLatitude, 2)) / 30);
-            System.out.println(state.toString());
-            resultSet = state.executeQuery();
-            while (resultSet.next()) {
-                double fromLongitude = resultSet.getDouble("from_longitude");
-                double fromLatitude = resultSet.getDouble("from_latitude");
-                double toLongitude = resultSet.getDouble("to_longitude");
-                double toLatitude = resultSet.getDouble("to_latitude");
-
-                Edge currentEdge = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude, 1);
-                if (edges.containsKey(currentEdge.getBlock())) {
-                    Edge oldEdge = edges.get(currentEdge.getBlock());
-                    edges.remove(currentEdge.getBlock());
-                    edges.put(currentEdge.getBlock(), oldEdge.updateWeight(1));
-                } else {
-                    edges.put(currentEdge.getBlock(), currentEdge);
-                }
-            }
-            resultSet.close();
-            state.close();
-            conn.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return edges;
+        String searchQuery = "select from_longitude, from_latitude, to_longitude, to_latitude "
+                + "from replytweets where ( to_tsvector('english', from_text) @@ to_tsquery( ? ) or "
+                + "to_tsvector('english', to_text) "
+                + "@@ to_tsquery( ? )) AND to_create_at::timestamp > TO_TIMESTAMP( ? , 'yyyymmddhh24miss') "
+                + "AND to_create_at::timestamp <= TO_TIMESTAMP( ? , 'yyyymmddhh24miss');";
+        state = conn.prepareStatement(searchQuery);
+        state.setString(1, query);
+        state.setString(2, query);
+        state.setString(3, start);
+        state.setString(4, date);
+        return state;
     }
 
-    public Result cluster(double lowerLongitude, double lowerLatitude, double upperLongitude,
-                          double upperLatitude, int zoom) {
+    private void bindFields(ObjectNode objectNode, String timestamp, String date, Calendar c, Calendar lastDateCalendar) {
+        objectNode.put("date", date);
+        objectNode.put("timestamp", timestamp);
+        if (!c.before(lastDateCalendar)) {
+            System.out.println(finished + date);
+            objectNode.put("flag", finished);
+        } else {
+            System.out.println(unfinished + date);
+            objectNode.put("flag", unfinished);
+        }
+    }
+
+
+    private Calendar incrementCalendar(int queryPeriod, String date, SimpleDateFormat sdf) throws ParseException {
+        Calendar c = Calendar.getInstance();
+        c.setTime(sdf.parse(date));
+        c.add(Calendar.HOUR, queryPeriod);  // number of days to add
+        return c;
+    }
+
+    private String getDate(String endDate, String firstDate) {
+        String date;
+        if (endDate == null) {
+            date = firstDate;  // Start date
+        } else {
+            date = endDate;
+        }
+        return date;
+    }
+
+    private Connection getConnection() throws ClassNotFoundException, SQLException {
+        Class.forName("org.postgresql.Driver");
+        return DriverManager.getConnection("jdbc:postgresql://localhost:5432/graphtweet", "graphuser",
+                "graphuser");
+    }
+
+    public void cluster(String query, BundleActor bundleActor) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode jsonNode = null;
+        try {
+            jsonNode = objectMapper.readTree(query);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        double lowerLongitude = Double.parseDouble(jsonNode.get("lowerLongitude").asText());
+        double upperLongitude = Double.parseDouble(jsonNode.get("upperLongitude").asText());
+        double lowerLatitude = Double.parseDouble(jsonNode.get("lowerLatitude").asText());
+        double upperLatitude = Double.parseDouble(jsonNode.get("upperLatitude").asText());
+        String timestamp = jsonNode.get("timestamp").asText();
+        int zoom = Integer.parseInt(jsonNode.get("zoom").asText());
         String json = "";
         if (pointCluster != null) {
-            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper = new ObjectMapper();
             ArrayNode arrayNode = objectMapper.createArrayNode();
             ArrayList<Cluster> clusters = pointCluster.getClusters(new double[]{lowerLongitude, lowerLatitude, upperLongitude, upperLatitude}, zoom);
             for (Cluster cluster : clusters) {
@@ -150,13 +239,31 @@ public class GraphController extends Controller {
             json = arrayNode.toString();
             System.out.printf("The number of points is %d\n", clusters.size());
         }
-        return ok(json);
+        ObjectNode objectNode = objectMapper.createObjectNode();
+        objectNode.put("option", 1);
+        objectNode.put("data", json);
+        objectNode.put("timestamp", timestamp);
+        bundleActor.returnData(objectNode.toString());
     }
 
-    public Result edgeCluster(double lowerLongitude, double lowerLatitude, double upperLongitude,
-                              double upperLatitude, int zoom, int bundling) {
-        String json = "";
+    public void edgeCluster(String query, BundleActor bundleActor) {
         ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode jsonNode = null;
+        try {
+            jsonNode = objectMapper.readTree(query);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        double lowerLongitude = Double.parseDouble(jsonNode.get("lowerLongitude").asText());
+        double upperLongitude = Double.parseDouble(jsonNode.get("upperLongitude").asText());
+        double lowerLatitude = Double.parseDouble(jsonNode.get("lowerLatitude").asText());
+        double upperLatitude = Double.parseDouble(jsonNode.get("upperLatitude").asText());
+        String timestamp = jsonNode.get("timestamp").asText();
+        int zoom = Integer.parseInt(jsonNode.get("zoom").asText());
+        int bundling = Integer.parseInt(jsonNode.get("bundling").asText());
+        String json = "";
+        objectMapper = new ObjectMapper();
+        ObjectNode objectNode = objectMapper.createObjectNode();
         ArrayNode arrayNode = objectMapper.createArrayNode();
         if (pointCluster != null) {
             ArrayList<Cluster> clusters = pointCluster.getClusters(new double[]{-180, -90, 180, 90}, zoom);
@@ -207,17 +314,10 @@ public class GraphController extends Controller {
                     }
                 }
             }
-            /*
-            double[] counts = new double[clusters.size()];
-            for (EdgeVector e : edgeVectors.keySet().toArray(new EdgeVector[0])) {
-                counts[e.sourceNodeInd] += new Edge(clusters.get(e.sourceNodeInd).y, clusters.get(e.sourceNodeInd).x, clusters.get(e.targetNodeInd).y, clusters.get(e.targetNodeInd).x).getDegree();
-                counts[e.targetNodeInd] += new Edge(clusters.get(e.targetNodeInd).y, clusters.get(e.targetNodeInd).x, clusters.get(e.sourceNodeInd).y, clusters.get(e.sourceNodeInd).x).getDegree();
-            }
-            */
             System.out.printf("The number of edges is %d\n", edges.size());
             if (bundling == 0) {
                 for (Map.Entry<Edge, Integer> entry : edges.entrySet()) {
-                    ObjectNode objectNode = objectMapper.createObjectNode();
+                    objectNode = objectMapper.createObjectNode();
                     objectNode.putArray("from").add(entry.getKey().getFromLongitude()).add(entry.getKey().getFromLatitude());
                     objectNode.putArray("to").add(entry.getKey().getToLongitude()).add(entry.getKey().getToLatitude());
                     objectNode.put("width", entry.getValue());
@@ -263,7 +363,11 @@ public class GraphController extends Controller {
 
             }
         }
-        return ok(json);
+        objectNode.put("option", 2);
+        objectNode.put("data", json);
+        objectNode.put("timestamp", timestamp);
+        System.out.println("json is: " + objectNode.toString());
+        bundleActor.returnData(objectNode.toString());
     }
 
     private double sqDistance(double x1, double y1, double x2, double y2) {
