@@ -335,6 +335,10 @@
                         if(document.getElementById("checkbox").checked === true) {
                             renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
                         } else {
+                            if(document.getElementById("bundle").checked === true){
+                                $('#bundle').prop('checked', false);
+                                $('#bundle').attr('checked', false);
+                            }
                             removeEdgeClusterLayer();
                         }
                     }
@@ -356,7 +360,11 @@
                         if(document.getElementById("bundle").checked === true) {
                             renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
                         } else {
-                            removeEdgeClusterLayer();
+                            if(document.getElementById("checkbox").checked === false) {
+                                removeEdgeClusterLayer();
+                            }else{
+                                renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
+                            }
                         }
                     }
 
