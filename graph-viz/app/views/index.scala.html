@@ -116,7 +116,7 @@
                     var sw_lng = sw.lng;
                     var sw_lat = sw.lat;
 
-                    let socket = new WebSocket("ws://169.234.14.113:9000/bundle");
+                    let socket = new WebSocket("ws://localhost:9000/bundle");
                     socket.onopen = function (e) {
                         current_timestamp = Date.now();
                         const sendingObj = {
@@ -156,10 +156,11 @@
                                 getColor: [177, 0, 38]
                             });
                             add_id_2_list('arc' + cnt, data.length);
-                        } else if (status === 'Y') {
+                        } else if (data === null && status === 'Y') {
                             socket.close();
                             return;
                         } else {
+                            console.log("add layer");
                             removeSingleLayer();
                             layer = new MapboxLayer({
                                 id: 'arc',

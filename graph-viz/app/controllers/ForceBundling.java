@@ -1,5 +1,7 @@
 package controllers;
 
+import jdk.nashorn.internal.ir.ObjectNode;
+
 import java.util.*;
 
 class EdgeVector {
@@ -22,6 +24,20 @@ class Vector {
     Vector(double x, double y) {
         this.x = x;
         this.y = y;
+    }
+
+
+    @Override
+    public boolean equals(Object o){
+        if (this == o) return true;
+        if (!(o instanceof Vector)) return false;
+        Vector v = (Vector) o;
+        return !(x - v.x > 1e-8) && !(y - v.y > 1e-8);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(x, y);
     }
 }
 
@@ -433,4 +449,34 @@ class ForceBundlingReturn extends BundlingAlgorithmReturn {
     ArrayList<Edge> centerEdges;
     ArrayList<Integer> lengths;
     ArrayList<Path> subdivisionPoints;
+}
+
+class FromTo {
+    public double[] getFrom() {
+        return from;
+    }
+
+    public void setFrom(double[] from) {
+        this.from = from;
+    }
+
+    public double[] getTo() {
+        return to;
+    }
+
+    public void setTo(double[] to) {
+        this.to = to;
+    }
+
+    public int getWidth() {
+        return width;
+    }
+
+    public void setWidth(int width) {
+        this.width = width;
+    }
+
+    double[] from;
+    double[] to;
+    int width;
 }

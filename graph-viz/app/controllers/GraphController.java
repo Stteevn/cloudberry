@@ -2,6 +2,7 @@ package controllers;
 
 import Utils.PropertiesUtil;
 import actors.BundleActor;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -9,6 +10,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import play.mvc.*;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.sql.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -28,7 +31,6 @@ public class GraphController extends Controller {
      * <code>/</code>.
      */
 
-//    private Hashtable<Integer, Edge> edges;
     private ArrayList<Edge> allEdges;
     // configuration properties
     private Properties configProps;
@@ -75,22 +77,89 @@ public class GraphController extends Controller {
         ObjectNode objectNode = objectMapper.createObjectNode();
         try {
             Edge.set_epsilon(9);
-            objectNode = queryResult(query, endDate, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, timestamp, objectNode);
+//            queryResult(query, endDate, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, timestamp, objectNode);
+            String content = new String(Files.readAllBytes(Paths.get("data/data.json")));
+//            System.out.println(content);
+
+            ArrayList<FromTo> arrayList = objectMapper.readValue(content, new TypeReference<List<FromTo>>(){});
+//            System.out.println(arrayList.get(0).from[0]);
+            HashMap<Vector, Integer> vectorMap = new HashMap<>();
+            ArrayList<EdgeVector> edgeMap = new ArrayList<>();
+            int ind = 0;
+            for(FromTo fromTo : arrayList){
+                Vector from = new Vector(fromTo.from[0], fromTo.from[1]);
+                Vector to = new Vector(fromTo.to[0], fromTo.to[1]);
+                int fromInd;
+                int toInd;
+                if(!vectorMap.containsKey(from)) {
+                    vectorMap.put(from, ind);
+                    fromInd = ind;
+                    ind++;
+                }else{
+//                    System.out.println("equals");
+                    fromInd = vectorMap.get(from);
+                }
+                if(!vectorMap.containsKey(to)){
+                    vectorMap.put(to, ind);
+                    toInd = ind;
+                    ind++;
+                }else{
+                    toInd = vectorMap.get(to);
+                }
+//                System.out.println("from: " + fromInd + ",to: " + toInd);
+                edgeMap.add(new EdgeVector(fromInd, toInd));
+            }
+
             long startBundling = System.currentTimeMillis();
             ArrayList<Vector> alldataNodes = new ArrayList<>();
             ArrayList<EdgeVector> alldataEdges = new ArrayList<>();
             ArrayList<Integer> weights = new ArrayList<>();
-            if (beforeEdgeLimit) {
-                loadListBeforeEdgeLimit(alldataNodes, alldataEdges, weights);
-            } else {
-                loadListAfterEdgeLimit(alldataNodes, alldataEdges, weights);
+            for(int i=0;i<ind;i++) {
+                alldataNodes.add(new Vector(0.0, 0.0));
             }
+
+            for(Map.Entry<Vector, Integer> entry: vectorMap.entrySet()){
+                alldataNodes.set(entry.getValue(),entry.getKey());
+            }
+//            for(int i=0;i<alldataNodes.size();i++) {
+//                System.out.println(alldataNodes.get(i).x);
+//            }
+            alldataEdges = edgeMap;
+//            if (beforeEdgeLimit) {
+//                loadListBeforeEdgeLimit(alldataNodes, alldataEdges, weights);
+//            } else {
+//                loadListAfterEdgeLimit(alldataNodes, alldataEdges, weights);
+//            }
+            BundlePreprocess bp = new BundlePreprocess(alldataNodes, alldataEdges);
+            bp.process();
             ArrayList<Path> pathResult = runBundling(alldataNodes, alldataEdges);
+
+            weights = new ArrayList<>();
+            for (int i = 0; i < alldataEdges.size(); i++) {
+                weights.add(1);
+            }
             objectMapper = new ObjectMapper();
             ArrayNode pathJson = objectMapper.createArrayNode();
+//            for (EdgeVector ev : alldataEdges) {
+//                int source = ev.sourceNodeInd;
+//                int target = ev.targetNodeInd;
+//                ObjectNode lineNode = objectMapper.createObjectNode();
+//                ArrayNode fromArray = objectMapper.createArrayNode();
+//                fromArray.add(alldataNodes.get(source).x);
+//                fromArray.add(alldataNodes.get(source).y);
+//                ArrayNode toArray = objectMapper.createArrayNode();
+//                toArray.add(alldataNodes.get(target).x);
+//                toArray.add(alldataNodes.get(target).y);
+//                lineNode.putArray("from").addAll(fromArray);
+//                lineNode.putArray("to").addAll(toArray);
+//                lineNode.put("width", 1);
+//                pathJson.add(lineNode);
+//            }
             long startParse = System.currentTimeMillis();
             formatPath(objectMapper, weights, pathResult, pathJson);
             objectNode.set("data", pathJson);
+            objectNode.put("flag", "Y");
+            objectNode.put("timestamp", timestamp);
             json = objectNode.toString();
             long endReply = System.currentTimeMillis();
             System.out.println("Total time in parsing data from Json is " + (endReply - startParse) + " ms");
@@ -110,19 +179,22 @@ public class GraphController extends Controller {
         int prevLength = 0;
         BundlingAlgorithm forceBundling;
         if (bar == null) {
+//            BundlePreprocess bp = new BundlePreprocess(alldataNodes, alldataEdges);
+//            bp.process();
             forceBundling = new ForceBundling(alldataNodes, alldataEdges);
         } else {
             prevLength = fbr.lengths.size();
             // status indicates whether the changing state has happened
             forceBundling = new ForceBundling(alldataNodes, alldataEdges, fbr.lengths, beforeEdgeLimit);
         }
+        System.out.println("begin bundle");
         bar = forceBundling.bundle();
         fbr = (ForceBundlingReturn) bar;
         ArrayList<Path> pathResult = fbr.subdivisionPoints;
         centerEdges = fbr.centerEdges;
-        if (beforeEdgeLimit && Math.abs(fbr.lengths.size() - prevLength) / (1.0 * prevLength) < 0.1 && alldataEdges.size() > edgeLimit) {
-            beforeEdgeLimit = false;
-        }
+//        if (beforeEdgeLimit && Math.abs(fbr.lengths.size() - prevLength) / (1.0 * prevLength) < 0.1 && alldataEdges.size() > edgeLimit) {
+//            beforeEdgeLimit = false;
+//        }
         System.out.println("prevLength: " + prevLength + " nowLength: " + fbr.lengths.size());
         return pathResult;
     }
@@ -190,7 +262,7 @@ public class GraphController extends Controller {
                 "graphuser");
     }
 
-    private ObjectNode queryResult(String query, String endDate, double lowerLongitude, double upperLongitude, double lowerLatitude,
+    private void queryResult(String query, String endDate, double lowerLongitude, double upperLongitude, double lowerLatitude,
                                    double upperLatitude, String timestamp, ObjectNode objectNode) {
         String firstDate = null;
         String lastDate = null;
@@ -206,7 +278,7 @@ public class GraphController extends Controller {
         }
 
         getData(query, endDate, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, timestamp, objectNode, firstDate, lastDate, queryPeriod);
-        return objectNode;
+//        return objectNode;
     }
 
     private void getData(String query, String endDate, double lowerLongitude, double upperLongitude, double lowerLatitude, double upperLatitude, String timestamp, ObjectNode objectNode, String firstDate, String lastDate, int queryPeriod) {
