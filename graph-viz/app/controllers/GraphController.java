@@ -83,6 +83,7 @@ public class GraphController extends Controller {
 
             ArrayList<FromTo> arrayList = objectMapper.readValue(content, new TypeReference<List<FromTo>>(){});
 //            System.out.println(arrayList.get(0).from[0]);
+            ArrayList<Integer> weightList = new ArrayList<>();
             HashMap<Vector, Integer> vectorMap = new HashMap<>();
             ArrayList<EdgeVector> edgeMap = new ArrayList<>();
             int ind = 0;
@@ -106,6 +107,7 @@ public class GraphController extends Controller {
                 }else{
                     toInd = vectorMap.get(to);
                 }
+                weightList.add(fromTo.width);
 //                System.out.println("from: " + fromInd + ",to: " + toInd);
                 edgeMap.add(new EdgeVector(fromInd, toInd));
             }
@@ -125,14 +127,15 @@ public class GraphController extends Controller {
 //                System.out.println(alldataNodes.get(i).x);
 //            }
             alldataEdges = edgeMap;
+            weights = weightList;
 //            if (beforeEdgeLimit) {
 //                loadListBeforeEdgeLimit(alldataNodes, alldataEdges, weights);
 //            } else {
 //                loadListAfterEdgeLimit(alldataNodes, alldataEdges, weights);
 //            }
+//            ArrayList<Path> pathResult = runBundling(alldataNodes, alldataEdges);
             BundlePreprocess bp = new BundlePreprocess(alldataNodes, alldataEdges);
             bp.process();
-            ArrayList<Path> pathResult = runBundling(alldataNodes, alldataEdges);
 
             weights = new ArrayList<>();
             for (int i = 0; i < alldataEdges.size(); i++) {
@@ -140,23 +143,23 @@ public class GraphController extends Controller {
             }
             objectMapper = new ObjectMapper();
             ArrayNode pathJson = objectMapper.createArrayNode();
-//            for (EdgeVector ev : alldataEdges) {
-//                int source = ev.sourceNodeInd;
-//                int target = ev.targetNodeInd;
-//                ObjectNode lineNode = objectMapper.createObjectNode();
-//                ArrayNode fromArray = objectMapper.createArrayNode();
-//                fromArray.add(alldataNodes.get(source).x);
-//                fromArray.add(alldataNodes.get(source).y);
-//                ArrayNode toArray = objectMapper.createArrayNode();
-//                toArray.add(alldataNodes.get(target).x);
-//                toArray.add(alldataNodes.get(target).y);
-//                lineNode.putArray("from").addAll(fromArray);
-//                lineNode.putArray("to").addAll(toArray);
-//                lineNode.put("width", 1);
-//                pathJson.add(lineNode);
-//            }
+            for (EdgeVector ev : alldataEdges) {
+                int source = ev.sourceNodeInd;
+                int target = ev.targetNodeInd;
+                ObjectNode lineNode = objectMapper.createObjectNode();
+                ArrayNode fromArray = objectMapper.createArrayNode();
+                fromArray.add(alldataNodes.get(source).x);
+                fromArray.add(alldataNodes.get(source).y);
+                ArrayNode toArray = objectMapper.createArrayNode();
+                toArray.add(alldataNodes.get(target).x);
+                toArray.add(alldataNodes.get(target).y);
+                lineNode.putArray("from").addAll(fromArray);
+                lineNode.putArray("to").addAll(toArray);
+                lineNode.put("width", 1);
+                pathJson.add(lineNode);
+            }
             long startParse = System.currentTimeMillis();
-            formatPath(objectMapper, weights, pathResult, pathJson);
+//            formatPath(objectMapper, weights, pathResult, pathJson);
             objectNode.set("data", pathJson);
             objectNode.put("flag", "Y");
             objectNode.put("timestamp", timestamp);
@@ -179,7 +182,7 @@ public class GraphController extends Controller {
         int prevLength = 0;
         BundlingAlgorithm forceBundling;
         if (bar == null) {
-//            BundlePreprocess bp = new BundlePreprocess(alldataNodes, alldataEdges);
+            BundlePreprocess bp = new BundlePreprocess(alldataNodes, alldataEdges);
 //            bp.process();
             forceBundling = new ForceBundling(alldataNodes, alldataEdges);
         } else {
@@ -187,7 +190,6 @@ public class GraphController extends Controller {
             // status indicates whether the changing state has happened
             forceBundling = new ForceBundling(alldataNodes, alldataEdges, fbr.lengths, beforeEdgeLimit);
         }
-        System.out.println("begin bundle");
         bar = forceBundling.bundle();
         fbr = (ForceBundlingReturn) bar;
         ArrayList<Path> pathResult = fbr.subdivisionPoints;
