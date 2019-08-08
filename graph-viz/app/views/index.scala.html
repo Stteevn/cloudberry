@@ -135,16 +135,19 @@
                         // console.log(status);
                         var date = json['date'];
                         var data = json['data'];
+                        var pointData = json['pointData'];
+                        console.log(pointData);
                         var timestamp = json['timestamp'];
                         console.log(meta);
                         console.log('timestamp' + timestamp);
                         console.log('current_timestamp' + current_timestamp);
-                        if(timestamp !== current_timestamp.toString()){
+                        if (timestamp !== current_timestamp.toString()) {
                             console.log('data is dropped');
                             return;
                         }
                         console.log('edge number' + data.length);
                         var layer;
+                        var iconLayer;
                         if (status === 'C') {
                             layer = new MapboxLayer({
                                 id: 'arc' + cnt,
@@ -162,6 +165,21 @@
                         } else {
                             console.log("add layer");
                             removeSingleLayer();
+                            iconLayer = new MapboxLayer({
+                                id: 'cluster',
+                                type: ScatterplotLayer,
+                                data: pointData,
+                                pickable: true,
+                                opacity: 0.8,
+                                stroked: false,
+                                filled: true,
+                                radiusScale: 100,
+                                radiusMinPixels: 5,
+                                radiusMaxPixels: 25,
+                                getPosition: d => d.coordinates,
+                                getRadius: d => d.size,
+                                getFillColor: d => [57, 73, 171],
+                            });
                             layer = new MapboxLayer({
                                 id: 'arc',
                                 type: LineLayer,
@@ -171,8 +189,11 @@
                                 getStrokeWidth: d => Math.min(15, Math.ceil(Math.pow(d.width, 1 / 3))),
                                 getColor: [177, 0, 38]
                             });
+                            console.log(pointData);
+
                         }
                         map.addLayer(layer);
+                        map.addLayer(iconLayer);
                         if (status !== 'Y') {
                             // console.log('send once');
                             const sendingObj = {

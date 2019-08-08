@@ -9,6 +9,7 @@ public class BundlePreprocess {
 
     final int fromEdges = 0;
     final int toEdges = 1;
+    final double fraction = 0.9;
 
     public BundlePreprocess(ArrayList<Vector> dataNodes, ArrayList<EdgeVector> dataEdges) {
         this.dataNodes = dataNodes;
@@ -19,7 +20,6 @@ public class BundlePreprocess {
         int dataNodeSize = this.dataNodes.size();
         HashMap<Integer, ArrayList<Integer>> adjacentMap = new HashMap<>();
         insertAdjacency(dataNodeSize, adjacentMap, fromEdges);
-        this.dataEdges.clear();
         // calculate the centroid of clump of targets shoot from every node
         bundleEdge(adjacentMap, dataNodeSize, fromEdges);
         insertAdjacency(dataNodeSize, adjacentMap, toEdges);
@@ -41,6 +41,7 @@ public class BundlePreprocess {
                 if (type == fromEdges) {
                     adjacentMap.computeIfAbsent(source, k -> new ArrayList<>());
                     adjacentMap.get(source).add(target);
+                    this.dataEdges.remove(i);
                 } else {
                     adjacentMap.computeIfAbsent(target, k -> new ArrayList<>());
                     adjacentMap.get(target).add(source);
@@ -58,10 +59,12 @@ public class BundlePreprocess {
             if (adjacentMap.get(i) == null || adjacentMap.get(i).size() == 0) {
                 continue;
             }
-            double centroidX = this.dataNodes.get(i).x;
-            double centroidY = this.dataNodes.get(i).y;
+            double originalX = this.dataNodes.get(i).x;
+            double originalY = this.dataNodes.get(i).y;
+            double centroidX = 0.0;
+            double centroidY = 0.0;
             System.out.println("cent X: " + centroidX + ",cent Y: " + centroidY);
-            int cnt = adjacentMap.get(i).size() + 1;
+            int cnt = adjacentMap.get(i).size();
             int centroidInd = this.dataNodes.size();
             for (Integer tarInd : adjacentMap.get(i)) {
                 Vector target = dataNodes.get(tarInd);
@@ -76,6 +79,8 @@ public class BundlePreprocess {
             }
             centroidX = centroidX / (cnt * 1.0);
             centroidY = centroidY / (cnt * 1.0);
+            centroidX = fraction * (centroidX - originalX) + originalX;
+            centroidY = fraction * (centroidY - originalY) + originalY;
 //            System.out.println("cent X: " + centroidX + ",cent Y: " + centroidY);
             Vector centroid = new Vector(centroidX, centroidY);
             this.dataNodes.add(centroid);

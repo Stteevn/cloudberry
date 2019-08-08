@@ -134,15 +134,15 @@ public class GraphController extends Controller {
 //                loadListAfterEdgeLimit(alldataNodes, alldataEdges, weights);
 //            }
 //            ArrayList<Path> pathResult = runBundling(alldataNodes, alldataEdges);
+            int allDataNodeSize = alldataNodes.size();
             BundlePreprocess bp = new BundlePreprocess(alldataNodes, alldataEdges);
             bp.process();
-
             weights = new ArrayList<>();
             for (int i = 0; i < alldataEdges.size(); i++) {
                 weights.add(1);
             }
             objectMapper = new ObjectMapper();
-            ArrayNode pathJson = objectMapper.createArrayNode();
+            ArrayNode pathNode = objectMapper.createArrayNode();
             for (EdgeVector ev : alldataEdges) {
                 int source = ev.sourceNodeInd;
                 int target = ev.targetNodeInd;
@@ -156,11 +156,21 @@ public class GraphController extends Controller {
                 lineNode.putArray("from").addAll(fromArray);
                 lineNode.putArray("to").addAll(toArray);
                 lineNode.put("width", 1);
-                pathJson.add(lineNode);
+                pathNode.add(lineNode);
             }
+            ArrayNode vectorArrayNode = objectMapper.createArrayNode();
+            for (int i=0;i<allDataNodeSize;i++) {
+                Vector v = alldataNodes.get(i);
+                ObjectNode vectorNode = objectMapper.createObjectNode();
+                vectorNode.putArray("coordinates").add(v.x).add(v.y);
+                vectorNode.put("size", 20);
+                vectorArrayNode.add(vectorNode);
+            }
+            json = vectorArrayNode.toString();
+            objectNode.set("pointData", vectorArrayNode);
             long startParse = System.currentTimeMillis();
 //            formatPath(objectMapper, weights, pathResult, pathJson);
-            objectNode.set("data", pathJson);
+            objectNode.set("data", pathNode);
             objectNode.put("flag", "Y");
             objectNode.put("timestamp", timestamp);
             json = objectNode.toString();
