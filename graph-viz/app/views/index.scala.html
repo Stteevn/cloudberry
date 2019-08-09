@@ -165,6 +165,16 @@
                         } else {
                             console.log("add layer");
                             removeSingleLayer();
+                            layer = new MapboxLayer({
+                                id: 'arc',
+                                type: LineLayer,
+                                data: data,
+                                getSourcePosition: d => d.from,
+                                getTargetPosition: d => d.to,
+                                getStrokeWidth: d => Math.min(15, Math.ceil(Math.pow(d.width, 1 / 3))),
+                                getColor: [177, 0, 38]
+                            });
+                            map.addLayer(layer);
                             iconLayer = new MapboxLayer({
                                 id: 'cluster',
                                 type: ScatterplotLayer,
@@ -180,20 +190,13 @@
                                 getRadius: d => d.size,
                                 getFillColor: d => [57, 73, 171],
                             });
-                            layer = new MapboxLayer({
-                                id: 'arc',
-                                type: LineLayer,
-                                data: data,
-                                getSourcePosition: d => d.from,
-                                getTargetPosition: d => d.to,
-                                getStrokeWidth: d => Math.min(15, Math.ceil(Math.pow(d.width, 1 / 3))),
-                                getColor: [177, 0, 38]
-                            });
+                            map.addLayer(iconLayer);
+
                             console.log(pointData);
 
                         }
-                        map.addLayer(layer);
-                        map.addLayer(iconLayer);
+
+
                         if (status !== 'Y') {
                             // console.log('send once');
                             const sendingObj = {

@@ -1,5 +1,7 @@
 package controllers;
 
+import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
+
 import java.util.*;
 
 public class BundlePreprocess {
@@ -10,29 +12,47 @@ public class BundlePreprocess {
     final int fromEdges = 0;
     final int toEdges = 1;
     final double fraction = 0.9;
+    // indicate the number of threshold edge
+    final int threshold = 5;
 
     public BundlePreprocess(ArrayList<Vector> dataNodes, ArrayList<EdgeVector> dataEdges) {
         this.dataNodes = dataNodes;
         this.dataEdges = dataEdges;
     }
 
+    class Pair {
+        int nodeId;
+        int edgeId;
+
+        public Pair(int nodeId, int edgeId) {
+            this.nodeId = nodeId;
+            this.edgeId = edgeId;
+        }
+    }
+
     public void process() {
         int dataNodeSize = this.dataNodes.size();
-        HashMap<Integer, ArrayList<Integer>> adjacentMap = new HashMap<>();
+        HashMap<Integer, ArrayList<Pair>> adjacentMap = new HashMap<>();
+        System.out.println("from before adjacency");
         insertAdjacency(dataNodeSize, adjacentMap, fromEdges);
+        System.out.println("from end adjacency");
         // calculate the centroid of clump of targets shoot from every node
         bundleEdge(adjacentMap, dataNodeSize, fromEdges);
+        System.out.println("from end bundle");
         insertAdjacency(dataNodeSize, adjacentMap, toEdges);
+        System.out.println("to end adjacency");
         bundleEdge(adjacentMap, dataNodeSize, toEdges);
+        System.out.println("to end bundle");
 
     }
 
     // type indicates the insertion type
     // 0: from edges
     // 1: to edges
-    private void insertAdjacency(int dataNodeSize, HashMap<Integer, ArrayList<Integer>> adjacentMap, int type) {
+    private void insertAdjacency(int dataNodeSize, HashMap<Integer, ArrayList<Pair>> adjacentMap, int type) {
         adjacentMap.clear();
         int size = dataEdges.size();
+        ArrayList<Integer> removeEdgeId = new ArrayList<>();
         for (int i = size - 1; i >= 0; i--) {
             EdgeVector ev = dataEdges.get(i);
             int source = ev.sourceNodeInd;
@@ -40,23 +60,40 @@ public class BundlePreprocess {
             if (target < dataNodeSize) {
                 if (type == fromEdges) {
                     adjacentMap.computeIfAbsent(source, k -> new ArrayList<>());
-                    adjacentMap.get(source).add(target);
-                    this.dataEdges.remove(i);
+                    adjacentMap.get(source).add(new Pair(target, i));
+                    removeEdgeAfterThreshold(removeEdgeId, adjacentMap, i, source);
                 } else {
                     adjacentMap.computeIfAbsent(target, k -> new ArrayList<>());
-                    adjacentMap.get(target).add(source);
-                    this.dataEdges.remove(i);
+                    adjacentMap.get(target).add(new Pair(source, i));
+                    removeEdgeAfterThreshold(removeEdgeId, adjacentMap, i, target);
                 }
             }
+        }
+        int removeEdgeIdSize = removeEdgeId.size();
+        removeEdgeId.sort(Comparator.comparingInt(o -> o));
+        for(int iter = removeEdgeIdSize - 1; iter >= 0; iter--) {
+            this.dataEdges.remove(removeEdgeId.get(iter).intValue());
+        }
+
+    }
+
+    private void removeEdgeAfterThreshold(ArrayList<Integer> removeEdgeId, HashMap<Integer, ArrayList<Pair>> adjacentMap, int i, int source) {
+        if (adjacentMap.get(source).size() == threshold) {
+            for (Pair tarPair : adjacentMap.get(source)) {
+                int edgeId = tarPair.edgeId;
+                removeEdgeId.add(edgeId);
+            }
+        } else if (adjacentMap.get(source).size() > threshold) {
+            removeEdgeId.add(i);
         }
     }
 
     // type indicates the insertion type
     // 0: from edges
     // 1: to edges
-    private void bundleEdge(HashMap<Integer, ArrayList<Integer>> adjacentMap, int dataNodeSize, int type) {
+    private void bundleEdge(HashMap<Integer, ArrayList<Pair>> adjacentMap, int dataNodeSize, int type) {
         for (int i = 0; i < dataNodeSize; i++) {
-            if (adjacentMap.get(i) == null || adjacentMap.get(i).size() == 0) {
+            if (adjacentMap.get(i) == null || adjacentMap.get(i).size() < threshold) {
                 continue;
             }
             double originalX = this.dataNodes.get(i).x;
@@ -66,7 +103,8 @@ public class BundlePreprocess {
             System.out.println("cent X: " + centroidX + ",cent Y: " + centroidY);
             int cnt = adjacentMap.get(i).size();
             int centroidInd = this.dataNodes.size();
-            for (Integer tarInd : adjacentMap.get(i)) {
+            for (Pair tarPair : adjacentMap.get(i)) {
+                int tarInd = tarPair.nodeId;
                 Vector target = dataNodes.get(tarInd);
                 centroidX += target.x;
                 centroidY += target.y;
