@@ -158,12 +158,14 @@ public class GraphController extends Controller {
                 lineNode.put("width", 1);
                 pathNode.add(lineNode);
             }
+
+            String clusterData = new String(Files.readAllBytes(Paths.get("data/cluster_data.json")));
+            ArrayList<ClusterPoints> clusterPointsArrayList = objectMapper.readValue(clusterData, new TypeReference<List<ClusterPoints>>(){});
             ArrayNode vectorArrayNode = objectMapper.createArrayNode();
-            for (int i=0;i<allDataNodeSize;i++) {
-                Vector v = alldataNodes.get(i);
+            for(ClusterPoints cluster : clusterPointsArrayList){
                 ObjectNode vectorNode = objectMapper.createObjectNode();
-                vectorNode.putArray("coordinates").add(v.x).add(v.y);
-                vectorNode.put("size", 20);
+                vectorNode.putArray("coordinates").add(cluster.getCoordinates()[0]).add(cluster.getCoordinates()[1]);
+                vectorNode.put("size", cluster.getSize());
                 vectorArrayNode.add(vectorNode);
             }
             json = vectorArrayNode.toString();

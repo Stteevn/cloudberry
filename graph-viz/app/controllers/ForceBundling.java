@@ -28,7 +28,7 @@ class Vector {
 
 
     @Override
-    public boolean equals(Object o){
+    public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof Vector)) return false;
         Vector v = (Vector) o;
@@ -479,4 +479,25 @@ class FromTo {
     double[] from;
     double[] to;
     int width;
+}
+
+class ClusterPoints {
+    public double[] getCoordinates() {
+        return coordinates;
+    }
+
+    public void setCoordinates(double[] coordinates) {
+        this.coordinates = coordinates;
+    }
+
+    public int getSize() {
+        return size;
+    }
+
+    public void setSize(int size) {
+        this.size = size;
+    }
+
+    private double[] coordinates;
+    private int size;
 }
