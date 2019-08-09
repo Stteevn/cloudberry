@@ -11,7 +11,7 @@ public class BundlePreprocess {
 
     final int fromEdges = 0;
     final int toEdges = 1;
-    final double fraction = 0.9;
+    final double fraction = 0.8;
     // indicate the number of threshold edge
     final int threshold = 5;
 
