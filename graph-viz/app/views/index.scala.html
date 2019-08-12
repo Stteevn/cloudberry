@@ -61,7 +61,7 @@
                         </div>
                         <div class="col-sm-1" style="padding: 0 5px">
                             <div class="form-check" style="margin: 10px 0 0 0">
-                                <input type="checkbox" class="form-check-input" id="point" onchange="point_change()">
+                                <input type="checkbox" class="form-check-input" id="point" onchange="point_change()" checked>
                                 <label class="form-check-label" for="exampleCheck1" >Point</label>
                             </div>
                         </div>
@@ -95,6 +95,7 @@
                     var current_timestamp;
                     let zoomLevel = Math.floor(map.getZoom());
                     var socket;
+                    var timerId = 0;
 
                     map.on("moveend", () => {
                         var bounds = map.getBounds();
@@ -248,6 +249,13 @@
                         }
                     }
 
+                    function openWebsocket() {
+                        if(socket.readyState === WebSocket.CLOSED || socket.readyState === WebSocket.CLOSING) {
+                            console.log("websocket is newed.");
+                            socket = new WebSocket("ws://localhost:9000/replies");
+                        }
+                    }
+
                     function drawGraph() {
                         removeLayer();
                         query = document.getElementById("keyword-textbox").value;
@@ -269,6 +277,7 @@
                             };
                             const sendingJSON = JSON.stringify(sendingObj);
                             socket.send(sendingJSON);
+                            keepAlive();
                         };
 
                         socket.onmessage = function (event) {
@@ -287,9 +296,9 @@
                                 console.log('data is dropped');
                                 return;
                             }
-                            console.log('meta: ' + meta);
-                            console.log('timestamp: ' + timestamp);
-                            console.log('current_timestamp: ' + current_timestamp);
+                            // console.log('meta: ' + meta);
+                            // console.log('timestamp: ' + timestamp);
+                            // console.log('current_timestamp: ' + current_timestamp);
                             if (option === 0) {
                                 var status = json['flag'];
                                 var date = json['date'];
@@ -305,7 +314,7 @@
                                         option: 0
                                     };
                                     const sendingJSON = JSON.stringify(sendingObj);
-                                    console.log('sending: ' + sendingJSON);
+                                    // console.log('sending: ' + sendingJSON);
                                     socket.send(sendingJSON);
                                 }
                                 renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
@@ -319,8 +328,10 @@
                                 data = JSON.parse(json['data']);
                                 receiveClusterEdges(data);
                             }
+                        };
 
-
+                        socket.onclose = function(event) {
+                            cancelKeepAlive();
                         }
                     }
 
@@ -380,6 +391,22 @@
                             renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
                         } else {
                             removeClusterLayer();
+                        }
+                    }
+
+                    // send heartbeat package to keep the connection alive
+                    function keepAlive() {
+                        console.log("send heartbeat pack.");
+                        var timeout = 20000;
+                        if (socket.readyState === WebSocket.OPEN) {
+                            socket.send('');
+                        }
+                        timerId = setTimeout(keepAlive, timeout);
+                    }
+
+                    function cancelKeepAlive() {
+                        if (timerId) {
+                            clearTimeout(timerId);
                         }
                     }
 

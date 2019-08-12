@@ -40,6 +40,10 @@ public class GraphController extends Controller {
      */
 
     public void dispatcher(String query, BundleActor bundleActor) {
+        if(query.equals("")) {
+            System.out.println("Heartbeat detected.");
+            return;
+        }
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode jsonNode;
         int option = -1;

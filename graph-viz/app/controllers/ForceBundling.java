@@ -59,7 +59,7 @@ public class ForceBundling {
     final double S_initial = 0.025;
     final int P_initial = 1;
     final int P_rate = 2;
-    final double C = 8;
+    final double C = 3;
     final double I_initial = 50;
     final double I_rate = 2.0 / 3.0;
     final double compatibility_threshold = 0.6;
