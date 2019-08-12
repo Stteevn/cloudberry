@@ -269,6 +269,7 @@ public class GraphController extends Controller {
                 double fromLatitude = PointCluster.yLat(fromCluster.y());
                 double toLongitude = PointCluster.xLng(toCluster.x());
                 double toLatitude = PointCluster.yLat(toCluster.y());
+                // TODO change the relationship from or to and
                 if ((lowerLongitude <= fromLongitude && fromLongitude <= upperLongitude
                         && lowerLatitude <= fromLatitude && fromLatitude <= upperLatitude)
                         || (lowerLongitude <= toLongitude && toLongitude <= upperLongitude
@@ -307,7 +308,10 @@ public class GraphController extends Controller {
                     closeEdgeList.add(entry.getValue());
                 }
                 ForceBundling forceBundling = new ForceBundling(dataNodes, dataEdges);
+                long beforeBundling = System.currentTimeMillis();
                 ArrayList<Path> pathResult = forceBundling.forceBundle();
+                long bundlingTime = System.currentTimeMillis() - beforeBundling;
+                System.out.println("bundling time: " + bundlingTime + "ms");
                 ArrayNode pathJson = objectMapper.createArrayNode();
                 int edgeNum = 0;
                 for (Path path : pathResult) {
