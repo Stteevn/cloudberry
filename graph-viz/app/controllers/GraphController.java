@@ -1,5 +1,6 @@
 package controllers;
 
+import Utils.DatabaseUtils;
 import Utils.PropertiesUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -125,7 +126,7 @@ public class GraphController extends Controller {
         PreparedStatement state;
         ResultSet resultSet;
         try {
-            conn = getConnection();
+            conn = DatabaseUtils.getConnection();
 
             String date = getDate(endDate, firstDate);
             String start = date;
@@ -153,7 +154,6 @@ public class GraphController extends Controller {
             pointCluster.load(points);
             resultSet.close();
             state.close();
-            conn.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
