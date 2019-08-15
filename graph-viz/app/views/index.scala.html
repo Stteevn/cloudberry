@@ -37,6 +37,17 @@
                 }
         </style>
 
+        <style>
+                .bottomleft {
+                    position: absolute;
+                    bottom: 32px;
+                    left: 24px;
+                    font-size: 18px;
+                }
+                html{ overflow-y: scroll;}
+        </style>
+
+
         <body style="line-height: 0;">
             <div id="map" style="width: 100vw;
                 height: 100vh"></div>
@@ -75,6 +86,17 @@
                         <button type="submit" onclick="drawGraph()" class=" btn btn-primary" id="submit-button">
                             Show</button>
                     </div>
+                </div>
+            </div>
+            <div id="stats">
+                <div class="bottomleft">
+                    <p id="tweetsCnt" style="margin: 0px 0px 25px">Tweets Count: 10582028</p>
+                    <p id="pointsCnt" style="margin: 0px 0px 25px">Points Count: </p>
+                    <p id="clustersCnt" style="margin: 0px 0px 25px">Clusters Count: </p>
+                    <p id="edgesCnt" style="margin: 0px 0px 25px">Edges Count: </p>
+                    <p id="bundledEdgesCnt" style="margin: 0px 0px 25px">Bundled Edges Count: </p>
+                    <p id="clusteringAlgo" style="margin: 0px 0px 25px">Clustering Algorithm: Hierarchical Greedy Clustering</p>
+                    <p id="bundlingAlgo" style="margin: 0px 0px 25px">Bundling Algorithm: Force-Directed Edge Bundling</p>
                 </div>
             </div>
         </body>
@@ -336,9 +358,13 @@
                                 renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
                             }
                         } else if (option === 1) {
+                            document.getElementById('pointsCnt').innerHTML = "Points Count: " + json['pointsCnt'];
+                            document.getElementById('clustersCnt').innerHTML = "Clusters Count: " + json['clustersCnt'];
                             data = JSON.parse(json['data']);
                             receiveClusterPoints(data);
                         } else {
+                            document.getElementById('edgesCnt').innerHTML = "Edges Count: " + json['edgesCnt'];
+                            document.getElementById('bundledEdgesCnt').innerHTML = "Bundled Edges Count: " + (json['edgesCnt'] - json['isolatedEdgesCnt']);
                             data = JSON.parse(json['data']);
                             receiveClusterEdges(data);
                         }

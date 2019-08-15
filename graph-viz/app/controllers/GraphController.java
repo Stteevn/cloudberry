@@ -225,10 +225,15 @@ public class GraphController extends Controller {
         String timestamp = jsonNode.get("timestamp").asText();
         int zoom = Integer.parseInt(jsonNode.get("zoom").asText());
         String json = "";
+        int pointsCnt = 0;
+        int clustersCnt = 0;
         if (pointCluster != null) {
             objectMapper = new ObjectMapper();
             ArrayNode arrayNode = objectMapper.createArrayNode();
+            ArrayList<Cluster> points = pointCluster.getClusters(new double[]{lowerLongitude, lowerLatitude, upperLongitude, upperLatitude}, 18);
             ArrayList<Cluster> clusters = pointCluster.getClusters(new double[]{lowerLongitude, lowerLatitude, upperLongitude, upperLatitude}, zoom);
+            pointsCnt = points.size();
+            clustersCnt = clusters.size();
             for (Cluster cluster : clusters) {
                 ObjectNode objectNode = objectMapper.createObjectNode();
                 objectNode.putArray("coordinates").add(PointCluster.xLng(cluster.x())).add(PointCluster.yLat(cluster.y()));
@@ -242,6 +247,8 @@ public class GraphController extends Controller {
         objectNode.put("option", 1);
         objectNode.put("data", json);
         objectNode.put("timestamp", timestamp);
+        objectNode.put("pointsCnt", pointsCnt);
+        objectNode.put("clustersCnt", clustersCnt);
         bundleActor.returnData(objectNode.toString());
     }
 
@@ -265,6 +272,8 @@ public class GraphController extends Controller {
         objectMapper = new ObjectMapper();
         ObjectNode objectNode = objectMapper.createObjectNode();
         ArrayNode arrayNode = objectMapper.createArrayNode();
+        int edgesCnt = 0;
+        int isolatedEdgesCnt = 0;
         if (pointCluster != null) {
             HashMap<Edge, Integer> edges = new HashMap<>();
             if (clustering == 0) {
@@ -297,6 +306,7 @@ public class GraphController extends Controller {
                     }
                 }
             }
+            edgesCnt = edges.size();
             System.out.printf("The number of edges is %d\n", edges.size());
             if (bundling == 0) {
                 for (Map.Entry<Edge, Integer> entry : edges.entrySet()) {
@@ -325,6 +335,7 @@ public class GraphController extends Controller {
                 ArrayList<Path> pathResult = forceBundling.forceBundle();
                 long bundlingTime = System.currentTimeMillis() - beforeBundling;
                 System.out.println("bundling time: " + bundlingTime + "ms");
+                isolatedEdgesCnt = forceBundling.isolatedEdgesCnt;
                 ArrayNode pathJson = objectMapper.createArrayNode();
                 int edgeNum = 0;
                 for (Path path : pathResult) {
@@ -350,6 +361,8 @@ public class GraphController extends Controller {
         objectNode.put("option", 2);
         objectNode.put("data", json);
         objectNode.put("timestamp", timestamp);
+        objectNode.put("edgesCnt", edgesCnt);
+        objectNode.put("isolatedEdgesCnt", isolatedEdgesCnt);
         bundleActor.returnData(objectNode.toString());
     }
 

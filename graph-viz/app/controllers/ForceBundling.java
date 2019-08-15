@@ -64,6 +64,7 @@ public class ForceBundling {
     final double I_rate = 2.0 / 3.0;
     final double compatibility_threshold = 0.6;
     final double eps = 1e-6;
+    int isolatedEdgesCnt = 0;
 
     public ForceBundling(ArrayList<Vector> dataNodes, ArrayList<EdgeVector> dataEdges) {
         this.dataNodes = dataNodes;
@@ -273,6 +274,9 @@ public class ForceBundling {
                     compatibilityList.get(e).add(oe);
                     compatibilityList.get(oe).add(e);
                 }
+            }
+            if (compatibilityList.get(e).isEmpty()) {
+                isolatedEdgesCnt++;
             }
         }
     }
