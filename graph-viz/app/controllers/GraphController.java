@@ -41,7 +41,7 @@ public class GraphController extends Controller {
      */
 
     public void dispatcher(String query, BundleActor bundleActor) {
-        if(query.equals("")) {
+        if (query.equals("")) {
             System.out.println("Heartbeat detected.");
             return;
         }
@@ -146,7 +146,7 @@ public class GraphController extends Controller {
                 double toLongitude = resultSet.getDouble("to_longitude");
                 double toLatitude = resultSet.getDouble("to_latitude");
                 Edge currentEdge = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
-                if(edgeSet.contains(currentEdge)) continue;
+                if (edgeSet.contains(currentEdge)) continue;
                 points.add(new Cluster(fromLongitude, fromLatitude));
                 points.add(new Cluster(toLongitude, toLatitude));
                 edgeSet.add(currentEdge);
@@ -260,29 +260,40 @@ public class GraphController extends Controller {
         String timestamp = jsonNode.get("timestamp").asText();
         int zoom = Integer.parseInt(jsonNode.get("zoom").asText());
         int bundling = Integer.parseInt(jsonNode.get("bundling").asText());
+        int clustering = Integer.parseInt(jsonNode.get("clustering").asText());
         String json = "";
         objectMapper = new ObjectMapper();
         ObjectNode objectNode = objectMapper.createObjectNode();
         ArrayNode arrayNode = objectMapper.createArrayNode();
         if (pointCluster != null) {
             HashMap<Edge, Integer> edges = new HashMap<>();
-            for (Edge edge : edgeSet) {
-                Cluster fromCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getFromLongitude()), PointCluster.latY(edge.getFromLatitude())), zoom);
-                Cluster toCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getToLongitude()), PointCluster.latY(edge.getToLatitude())), zoom);
-                double fromLongitude = PointCluster.xLng(fromCluster.x());
-                double fromLatitude = PointCluster.yLat(fromCluster.y());
-                double toLongitude = PointCluster.xLng(toCluster.x());
-                double toLatitude = PointCluster.yLat(toCluster.y());
-                // TODO change the relationship from or to and
-                if ((lowerLongitude <= fromLongitude && fromLongitude <= upperLongitude
-                        && lowerLatitude <= fromLatitude && fromLatitude <= upperLatitude)
-                        || (lowerLongitude <= toLongitude && toLongitude <= upperLongitude
-                        && lowerLatitude <= toLatitude && toLatitude <= upperLatitude)) {
-                    Edge e = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
-                    if (edges.containsKey(e)) {
-                        edges.put(e, edges.get(e) + 1);
+            if (clustering == 0) {
+                for (Edge edge : edgeSet) {
+                    if (edges.containsKey(edge)) {
+                        edges.put(edge, edges.get(edge) + 1);
                     } else {
-                        edges.put(e, 1);
+                        edges.put(edge, 1);
+                    }
+                }
+            } else {
+                for (Edge edge : edgeSet) {
+                    Cluster fromCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getFromLongitude()), PointCluster.latY(edge.getFromLatitude())), zoom);
+                    Cluster toCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getToLongitude()), PointCluster.latY(edge.getToLatitude())), zoom);
+                    double fromLongitude = PointCluster.xLng(fromCluster.x());
+                    double fromLatitude = PointCluster.yLat(fromCluster.y());
+                    double toLongitude = PointCluster.xLng(toCluster.x());
+                    double toLatitude = PointCluster.yLat(toCluster.y());
+                    // TODO change the relationship from or to and
+                    if ((lowerLongitude <= fromLongitude && fromLongitude <= upperLongitude
+                            && lowerLatitude <= fromLatitude && fromLatitude <= upperLatitude)
+                            || (lowerLongitude <= toLongitude && toLongitude <= upperLongitude
+                            && lowerLatitude <= toLatitude && toLatitude <= upperLatitude)) {
+                        Edge e = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
+                        if (edges.containsKey(e)) {
+                            edges.put(e, edges.get(e) + 1);
+                        } else {
+                            edges.put(e, 1);
+                        }
                     }
                 }
             }
@@ -295,8 +306,6 @@ public class GraphController extends Controller {
                     objectNode.put("width", entry.getValue());
                     arrayNode.add(objectNode);
                 }
-                double variance = okBundle(edges.keySet().toArray(new Edge[0]));
-                arrayNode.add(variance);
                 json = arrayNode.toString();
             } else {
                 ArrayList<Vector> dataNodes = new ArrayList<>();
@@ -348,30 +357,4 @@ public class GraphController extends Controller {
         return Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2);
     }
 
-
-    private double okBundle(Edge[] edges) {
-        int count = 0;
-        int tot = 0;
-        for (int i = 0; i < edges.length; i++) {
-            Edge e1 = edges[i];
-            for (int j = i + 1; j < edges.length; j++) {
-                Edge e2 = edges[j];
-                if (e1.getFromLongitude() == e2.getFromLongitude() && e1.getFromLatitude() == e2.getFromLatitude()) {
-                    continue;
-                } else if (e1.getFromLongitude() == e2.getToLongitude() && e1.getFromLatitude() == e2.getToLatitude()) {
-                    continue;
-                } else if (e1.getToLongitude() == e2.getFromLongitude() && e1.getToLatitude() == e2.getFromLatitude()) {
-                    continue;
-                } else if (e1.getToLongitude() == e2.getToLongitude() && e1.getToLatitude() == e2.getToLatitude()) {
-                    continue;
-                }
-                if (e1.cross(e2)) {
-                    count++;
-                }
-                tot++;
-            }
-        }
-        double percentage = count * 100.0 / tot;
-        return percentage;
-    }
 }

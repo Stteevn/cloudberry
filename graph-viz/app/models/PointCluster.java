@@ -19,6 +19,10 @@ public class PointCluster {
         }
     }
 
+    public int getMaxZoom() {
+        return maxZoom;
+    }
+
     public void load(ArrayList<Cluster> points) {
         for (Cluster point : points) {
             insert(new Cluster(lngX(point.x()), latY(point.y()), null, 1));
