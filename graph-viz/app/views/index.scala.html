@@ -296,13 +296,6 @@
                     }
                 }
 
-                function openWebsocket() {
-                    if (socket.readyState === WebSocket.CLOSED || socket.readyState === WebSocket.CLOSING) {
-                        console.log("websocket is newed.");
-                        socket = new WebSocket("ws://localhost:9000/replies");
-                    }
-                }
-
                 function drawGraph() {
                     removeLayer();
                     query = document.getElementById("keyword-textbox").value;
@@ -439,6 +432,7 @@
                         renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
                     } else {
                         removeClusterLayer();
+                        document.getElementById("cluster").checked = false;
                     }
                 }
 
@@ -451,9 +445,15 @@
                     var minLng = sw.lng;
                     var minLat = sw.lat;
                     if (document.getElementById("cluster").checked === true) {
-                        renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
+                        document.getElementById("point").checked = true;
                     } else {
                         removeClusterLayer();
+                    }
+                    if (document.getElementById("point").checked === true) {
+                        renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
+                    }
+                    if (document.getElementById("checkbox").checked === true) {
+                        renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
                     }
                 }
 
