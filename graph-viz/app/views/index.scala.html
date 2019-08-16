@@ -42,9 +42,17 @@
                     position: absolute;
                     bottom: 32px;
                     left: 24px;
+                    font-style: italic;
                     font-size: 18px;
                 }
-                html{ overflow-y: scroll;}
+
+                .bottomleft p {
+                    margin: 0px 0px 25px;
+                }
+
+                html {
+                    overflow-y: scroll;
+                }
         </style>
 
 
@@ -90,13 +98,13 @@
             </div>
             <div id="stats">
                 <div class="bottomleft">
-                    <p id="tweetsCnt" style="margin: 0px 0px 25px">Tweets Count: 10582028</p>
-                    <p id="pointsCnt" style="margin: 0px 0px 25px">Points Count: </p>
-                    <p id="clustersCnt" style="margin: 0px 0px 25px">Clusters Count: </p>
-                    <p id="edgesCnt" style="margin: 0px 0px 25px">Edges Count: </p>
-                    <p id="bundledEdgesCnt" style="margin: 0px 0px 25px">Bundled Edges Count: </p>
-                    <p id="clusteringAlgo" style="margin: 0px 0px 25px">Clustering Algorithm: Hierarchical Greedy Clustering</p>
-                    <p id="bundlingAlgo" style="margin: 0px 0px 25px">Bundling Algorithm: Force-Directed Edge Bundling</p>
+                    <p id="tweetsCnt">Tweets Count: 10582028</p>
+                    <p id="pointsCnt">Points Count: </p>
+                    <p id="clustersCnt">Clusters Count: </p>
+                    <p id="edgesCnt">Edges Count: </p>
+                    <p id="bundledEdgesCnt">Bundled Edges Count: </p>
+                    <p id="clusteringAlgo">Clustering Algorithm: HGC</p>
+                    <p id="bundlingAlgo">Bundling Algorithm: FDEB</p>
                 </div>
             </div>
         </body>
@@ -176,7 +184,7 @@
                     var clustering_control;
                     if (document.getElementById("cluster").checked === true) {
                         clustering_control = 1;
-                    }else {
+                    } else {
                         clustering_control = 0;
                     }
                     var bundling_control;

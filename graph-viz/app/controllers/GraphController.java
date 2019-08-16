@@ -309,6 +309,7 @@ public class GraphController extends Controller {
             edgesCnt = edges.size();
             System.out.printf("The number of edges is %d\n", edges.size());
             if (bundling == 0) {
+                isolatedEdgesCnt = edgesCnt;
                 for (Map.Entry<Edge, Integer> entry : edges.entrySet()) {
                     objectNode = objectMapper.createObjectNode();
                     objectNode.putArray("from").add(entry.getKey().getFromLongitude()).add(entry.getKey().getFromLatitude());
