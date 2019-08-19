@@ -42,9 +42,22 @@ public class PointCluster {
             } else {
                 Cluster neighbor = null;
                 point.setZoom(z + 1);
+                int totNumOfPoints = 0;
                 for (int i = 0; i < neighbors.size(); i++) {
                     neighbor = neighbors.get(i);
-                    if (neighbor.x() != point.x() || neighbor.y() != point.y()) break;
+                    if (neighbor.x() != point.x() || neighbor.y() != point.y()) continue;
+                    totNumOfPoints += neighbor.getNumPoints();
+                }
+                double rand = Math.random();
+                for (int i = 0; i < neighbors.size(); i++) {
+                    neighbor = neighbors.get(i);
+                    if (neighbor.x() != point.x() || neighbor.y() != point.y()) continue;
+                    double probability = neighbor.getNumPoints() * 1.0 / totNumOfPoints;
+                    if (rand < probability) {
+                        break;
+                    } else {
+                        rand -= probability;
+                    }
                 }
                 point.parent = neighbor;
                 while (neighbor != null) {
