@@ -136,7 +136,11 @@ public class Edge {
 
     @Override
     public int hashCode() {
-        return Objects.hash(fromLatitude, fromLongitude, toLatitude, toLongitude);
+        if(fromLatitude < toLatitude) {
+            return Objects.hash(fromLatitude, fromLongitude, toLatitude, toLongitude);
+        }else{
+            return Objects.hash(toLatitude, toLongitude, fromLatitude, fromLongitude);
+        }
     }
 
     @Override

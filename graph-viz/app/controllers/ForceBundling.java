@@ -56,6 +56,7 @@ public class ForceBundling {
     ArrayList<Path> subdivisionPoints = new ArrayList<>();
     ArrayList<ArrayList<Integer>> compatibilityList = new ArrayList<>();
     final double K = 0.1;
+    // S influence the step length, it should be adjusted in the final result
     final double S_initial = 0.025;
     final int P_initial = 1;
     final int P_rate = 2;

@@ -1,0 +1,86 @@
+Picked up _JAVA_OPTIONS:   -Dawt.useSystemAAFontSettings=gasp
+[0m[[0m[0minfo[0m] [0m[0mLoading settings for project graph-viz-build from plugins.sbt ...[0m
+[0m[[0m[0minfo[0m] [0m[0mLoading project definition from /home/yi/Code/java/steven-cloudberry/cloudberry/graph-viz/project[0m
+[0m[[0m[0minfo[0m] [0m[0mUpdating ProjectRef(uri("file:/home/yi/Code/java/steven-cloudberry/cloudberry/graph-viz/project/"), "graph-viz-build")...[0m
+[0m[[0m[0minfo[0m] [0m[0mDone updating.[0m
+[0m[[0m[33mwarn[0m] [0m[0mThere may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings.[0m
+[0m[[0m[0minfo[0m] [0m[0mCompiling 1 Scala source to /home/yi/Code/java/steven-cloudberry/cloudberry/graph-viz/project/target/scala-2.12/sbt-1.0/classes ...[0m
+[0m[[0m[0minfo[0m] [0m[0mDone compiling.[0m
+[0m[[0m[0minfo[0m] [0m[0mLoading settings for project root from build.sbt ...[0m
+[0m[[0m[0minfo[0m] [0m[0mSet current project to graph-viz (in build file:/home/yi/Code/java/steven-cloudberry/cloudberry/graph-viz/)[0m
+[0m[[0m[0minfo[0m] [0m[0mUpdating ...[0m
+[0m[[0m[0minfo[0m] [0m[0mDone updating.[0m
+[0m[[0m[33mwarn[0m] [0m[0mThere may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings.[0m
+
+[35m--- (Running the application, auto-reloading is enabled) ---[0m
+
+[[37minfo[0m] p.c.s.AkkaHttpServer - Listening for HTTP on /0:0:0:0:0:0:0:0:9000
+
+[32m(Server started, use Enter to stop and go back to the console...)[0m
+
+[0m[[0m[31merror[0m] [0m[0mjava.io.IOException: Bad file descriptor[0m
+[0m[[0m[31merror[0m] [0m[0m	at java.io.FileInputStream.read0(Native Method)[0m
+[0m[[0m[31merror[0m] [0m[0m	at java.io.FileInputStream.read(FileInputStream.java:207)[0m
+[0m[[0m[31merror[0m] [0m[0m	at jline.internal.NonBlockingInputStream.read(NonBlockingInputStream.java:245)[0m
+[0m[[0m[31merror[0m] [0m[0m	at jline.internal.InputStreamReader.read(InputStreamReader.java:257)[0m
+[0m[[0m[31merror[0m] [0m[0m	at jline.internal.InputStreamReader.read(InputStreamReader.java:194)[0m
+[0m[[0m[31merror[0m] [0m[0m	at jline.console.ConsoleReader.readCharacter(ConsoleReader.java:2151)[0m
+[0m[[0m[31merror[0m] [0m[0m	at jline.console.ConsoleReader.readCharacter(ConsoleReader.java:2141)[0m
+[0m[[0m[31merror[0m] [0m[0m	at play.sbt.PlayConsoleInteractionMode$.waitEOF$1(PlayInteractionMode.scala:65)[0m
+[0m[[0m[31merror[0m] [0m[0m	at play.sbt.PlayConsoleInteractionMode$.$anonfun$waitForKey$2(PlayInteractionMode.scala:76)[0m
+[0m[[0m[31merror[0m] [0m[0m	at play.sbt.PlayConsoleInteractionMode$.$anonfun$doWithoutEcho$1(PlayInteractionMode.scala:83)[0m
+[0m[[0m[31merror[0m] [0m[0m	at play.sbt.PlayConsoleInteractionMode$.$anonfun$doWithoutEcho$1$adapted(PlayInteractionMode.scala:80)[0m
+[0m[[0m[31merror[0m] [0m[0m	at play.sbt.PlayConsoleInteractionMode$.withConsoleReader(PlayInteractionMode.scala:59)[0m
+[0m[[0m[31merror[0m] [0m[0m	at play.sbt.PlayConsoleInteractionMode$.doWithoutEcho(PlayInteractionMode.scala:80)[0m
+[0m[[0m[31merror[0m] [0m[0m	at play.sbt.PlayConsoleInteractionMode$.$anonfun$waitForKey$1(PlayInteractionMode.scala:76)[0m
+[0m[[0m[31merror[0m] [0m[0m	at play.sbt.PlayConsoleInteractionMode$.$anonfun$waitForKey$1$adapted(PlayInteractionMode.scala:63)[0m
+[0m[[0m[31merror[0m] [0m[0m	at play.sbt.PlayConsoleInteractionMode$.withConsoleReader(PlayInteractionMode.scala:59)[0m
+[0m[[0m[31merror[0m] [0m[0m	at play.sbt.PlayConsoleInteractionMode$.waitForKey(PlayInteractionMode.scala:63)[0m
+[0m[[0m[31merror[0m] [0m[0m	at play.sbt.PlayConsoleInteractionMode$.waitForCancel(PlayInteractionMode.scala:87)[0m
+[0m[[0m[31merror[0m] [0m[0m	at play.sbt.run.PlayRun$.$anonfun$playRunTask$3(PlayRun.scala:123)[0m
+[0m[[0m[31merror[0m] [0m[0m	at play.sbt.run.PlayRun$.$anonfun$playRunTask$3$adapted(PlayRun.scala:68)[0m
+[0m[[0m[31merror[0m] [0m[0m	at scala.Function1.$anonfun$compose$1(Function1.scala:44)[0m
+[0m[[0m[31merror[0m] [0m[0m(Compile / [31mrun[0m) java.io.IOException: Bad file descriptor[0m
+[0m[[0m[31merror[0m] [0m[0mTotal time: 9 s, completed Aug 12, 2019 7:58:03 PM[0m
+[[37minfo[0m] p.c.s.AkkaHttpServer - Stopping server...
+2019-08-12 19:58:03,905 pool-7-thread-5 ERROR No Log4j 2 configuration file found. Using default configuration (logging only errors to the console), or user programmatically provided configurations. Set system property 'log4j2.debug' to show Log4j 2 internal initialization logging. See https://logging.apache.org/log4j/2.x/manual/configuration.html for instructions on how to configure Log4j 2
+[0m[[0m[31merror[0m] [0m[0mscala.MatchError: org.apache.logging.log4j.simple.SimpleLoggerContext@23a9aad6 (of class org.apache.logging.log4j.simple.SimpleLoggerContext)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.util.LogExchange.logger(LogExchange.scala:28)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.internal.LogManager$.defaultLogger(LogManager.scala:137)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.internal.LogManager$DefaultLogManager.apply(LogManager.scala:104)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.internal.LogManager$.$anonfun$construct$1(LogManager.scala:52)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.std.Streams$$anon$3$$anon$2.log(Streams.scala:178)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.std.TaskStreams.log(Streams.scala:85)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.std.TaskStreams.log$(Streams.scala:85)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.std.Streams$$anon$3$$anon$2.log$lzycompute(Streams.scala:136)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.std.Streams$$anon$3$$anon$2.log(Streams.scala:136)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.Defaults$.$anonfun$compileInputsSettings$2(Defaults.scala:1590)[0m
+[0m[[0m[31merror[0m] [0m[0m	at scala.Function1.$anonfun$compose$1(Function1.scala:44)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.internal.util.$tilde$greater.$anonfun$$u2219$1(TypeFunctions.scala:40)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.std.Transform$$anon$4.work(System.scala:67)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.Execute.$anonfun$submit$2(Execute.scala:269)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.internal.util.ErrorHandling$.wideConvert(ErrorHandling.scala:16)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.Execute.work(Execute.scala:278)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.Execute.$anonfun$submit$1(Execute.scala:269)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.ConcurrentRestrictions$$anon$4.$anonfun$submitValid$1(ConcurrentRestrictions.scala:178)[0m
+[0m[[0m[31merror[0m] [0m[0m	at sbt.CompletionService$$anon$2.call(CompletionService.scala:37)[0m
+[0m[[0m[31merror[0m] [0m[0m	at java.util.concurrent.FutureTask.run(FutureTask.java:266)[0m
+[0m[[0m[31merror[0m] [0m[0m	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511)[0m
+[0m[[0m[31merror[0m] [0m[0m	at java.util.concurrent.FutureTask.run(FutureTask.java:266)[0m
+[0m[[0m[31merror[0m] [0m[0m	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)[0m
+[0m[[0m[31merror[0m] [0m[0m	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)[0m
+[0m[[0m[31merror[0m] [0m[0m	at java.lang.Thread.run(Thread.java:748)[0m
+[0m[[0m[31merror[0m] [0m[0m(Compile / compile / [31mcompilerReporter[0m) scala.MatchError: org.apache.logging.log4j.simple.SimpleLoggerContext@23a9aad6 (of class org.apache.logging.log4j.simple.SimpleLoggerContext)[0m
+[[33mwarn[0m] a.a.CoordinatedShutdown - Task [shutdown-application-dev-mode] failed in phase [service-stop]: Unexpected exception[MatchError: org.apache.logging.log4j.simple.SimpleLoggerContext@23a9aad6 (of class org.apache.logging.log4j.simple.SimpleLoggerContext)]
+[[37minfo[0m] p.a.d.DefaultDBApi - Database [default] initialized at jdbc:postgresql://localhost:5432/graphtweet
+[[37minfo[0m] application - Creating Pool for datasource 'default'
+[[37minfo[0m] p.a.h.EnabledFilters - Enabled Filters (see <https://www.playframework.com/documentation/latest/Filters>):
+
+    play.filters.csrf.CSRFFilter
+    play.filters.headers.SecurityHeadersFilter
+    play.filters.hosts.AllowedHostsFilter
+
+[[33mwarn[0m] a.a.CoordinatedShutdown - Coordinated shutdown phase [before-actor-system-terminate] timed out after 5000 milliseconds
+[[37minfo[0m] play.api.Play - Application started (Dev) (no global state)
+Picked up _JAVA_OPTIONS:   -Dawt.useSystemAAFontSettings=gasp
+Error: Could not find or load main class ..target.scala-2.11.graph-viz_2.11-1.0-SNAPSHOT.jar

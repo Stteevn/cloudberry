@@ -7,8 +7,12 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import models.Cluster;
 import models.PointCluster;
+import org.checkerframework.checker.units.qual.A;
+import org.checkerframework.checker.units.qual.C;
+import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 import play.mvc.*;
 import actors.BundleActor;
+import sun.util.resources.cldr.de.CalendarData_de_LU;
 
 import java.io.IOException;
 import java.sql.*;
@@ -40,7 +44,7 @@ public class GraphController extends Controller {
      */
 
     public void dispatcher(String query, BundleActor bundleActor) {
-        if(query.equals("")) {
+        if (query.equals("")) {
             System.out.println("Heartbeat detected.");
             return;
         }
@@ -145,7 +149,7 @@ public class GraphController extends Controller {
                 double toLongitude = resultSet.getDouble("to_longitude");
                 double toLatitude = resultSet.getDouble("to_latitude");
                 Edge currentEdge = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
-                if(edgeSet.contains(currentEdge)) continue;
+                if (edgeSet.contains(currentEdge)) continue;
                 points.add(new Cluster(fromLongitude, fromLatitude));
                 points.add(new Cluster(toLongitude, toLatitude));
                 edgeSet.add(currentEdge);
@@ -260,12 +264,17 @@ public class GraphController extends Controller {
         String timestamp = jsonNode.get("timestamp").asText();
         int zoom = Integer.parseInt(jsonNode.get("zoom").asText());
         int bundling = Integer.parseInt(jsonNode.get("bundling").asText());
+        int inside = Integer.parseInt(jsonNode.get("inside").asText());
         String json = "";
         objectMapper = new ObjectMapper();
         ObjectNode objectNode = objectMapper.createObjectNode();
         ArrayNode arrayNode = objectMapper.createArrayNode();
         if (pointCluster != null) {
             HashMap<Edge, Integer> edges = new HashMap<>();
+            int externalCnt = 0;
+            HashSet<Cluster> externalCluster = new HashSet<>();
+            HashSet<Cluster> internalCluster = new HashSet<>();
+            HashSet<Edge> externalEdgeSet = new HashSet<>();
             for (Edge edge : edgeSet) {
                 Cluster fromCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getFromLongitude()), PointCluster.latY(edge.getFromLatitude())), zoom);
                 Cluster toCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getToLongitude()), PointCluster.latY(edge.getToLatitude())), zoom);
@@ -275,7 +284,7 @@ public class GraphController extends Controller {
                 double toLatitude = PointCluster.yLat(toCluster.y());
                 if ((lowerLongitude <= fromLongitude && fromLongitude <= upperLongitude
                         && lowerLatitude <= fromLatitude && fromLatitude <= upperLatitude)
-                        || (lowerLongitude <= toLongitude && toLongitude <= upperLongitude
+                        && (lowerLongitude <= toLongitude && toLongitude <= upperLongitude
                         && lowerLatitude <= toLatitude && toLatitude <= upperLatitude)) {
                     Edge e = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
                     if (edges.containsKey(e)) {
@@ -283,9 +292,111 @@ public class GraphController extends Controller {
                     } else {
                         edges.put(e, 1);
                     }
+                    internalCluster.add(fromCluster);
+                    internalCluster.add(toCluster);
+                } else if ((lowerLongitude <= fromLongitude && fromLongitude <= upperLongitude
+                        && lowerLatitude <= fromLatitude && fromLatitude <= upperLatitude)
+                        || (lowerLongitude <= toLongitude && toLongitude <= upperLongitude
+                        && lowerLatitude <= toLatitude && toLatitude <= upperLatitude)) {
+                    if (lowerLongitude <= fromLongitude && fromLongitude <= upperLongitude
+                            && lowerLatitude <= fromLatitude && fromLatitude <= upperLatitude) {
+                        externalCluster.add(toCluster);
+                    } else {
+                        externalCluster.add(fromCluster);
+                    }
+                    externalEdgeSet.add(edge);
                 }
             }
-            System.out.printf("The number of edges is %d\n", edges.size());
+            System.out.println("The keyword is " + jsonNode.get("query").asText() + ", The zoom level is " + zoom);
+            System.out.printf("The number of internal edges is %d\n", edges.size());
+            System.out.println("The number of internal cluster is " + internalCluster.size());
+            System.out.println("The number of external cluster is " + externalCluster.size());
+            System.out.printf("The number of external edges before is %d\n", externalEdgeSet.size());
+            if (inside == 1) {
+                long cutStart = System.currentTimeMillis();
+                HashMap<Cluster, Cluster> externalClusterMap = new HashMap<>();
+                HashMap<Cluster, ArrayList<Cluster>> externalHierarchy = new HashMap<>();
+                HashSet<Cluster> internalHierarchy = new HashSet<>();
+                addClusterHierarchy(externalCluster, externalHierarchy);
+                addClusterHierarchy(internalCluster, internalHierarchy);
+                while (true) {
+                    ArrayList<Cluster> removeKeyList = new ArrayList<>();
+                    // Find clusters has common ancestor with internal clusters at this level
+                    for (Map.Entry<Cluster, ArrayList<Cluster>> entry : externalHierarchy.entrySet()) {
+                        Cluster key = entry.getKey();
+                        if (internalHierarchy.contains(key)) {
+                            int level = entry.getKey().getZoom();
+                            // use a level lower because of conflict
+                            int diff = entry.getValue().get(0).getZoom() - level - 1;
+                            Cluster cPar;
+                            for (Cluster c : entry.getValue()) {
+                                cPar = c;
+                                for (int i = 0; i < diff; i++) {
+                                    cPar = cPar.parent;
+                                }
+                                externalClusterMap.put(c, cPar);
+                            }
+                            removeKeyList.add(key);
+                        }
+                    }
+                    // remove all clusters stop at this level
+                    for (Cluster c : removeKeyList) {
+                        externalHierarchy.remove(c);
+                    }
+                    if (externalHierarchy.size() == 0) {
+                        break;
+                    }
+                    // elevate all remaining clusters to a higher level
+                    externalHierarchy = elevateHierarchy(externalHierarchy, externalClusterMap);
+                    internalHierarchy = elevateHierarchy(internalHierarchy);
+                }
+                for (Edge edge : externalEdgeSet) {
+                    Cluster fromCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getFromLongitude()), PointCluster.latY(edge.getFromLatitude())), zoom);
+                    Cluster toCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getToLongitude()), PointCluster.latY(edge.getToLatitude())), zoom);
+                    double fromLongitude = PointCluster.xLng(fromCluster.x());
+                    double fromLatitude = PointCluster.yLat(fromCluster.y());
+                    double insideLat, insideLng, outsideLat, outsideLng;
+                    if (lowerLongitude <= fromLongitude && fromLongitude <= upperLongitude
+                            && lowerLatitude <= fromLatitude && fromLatitude <= upperLatitude) {
+                        insideLng = fromLongitude;
+                        insideLat = fromLatitude;
+                        Cluster elevatedCluster = externalClusterMap.get(toCluster);
+                        outsideLng = PointCluster.xLng(elevatedCluster.x());
+                        outsideLat = PointCluster.yLat(elevatedCluster.y());
+                    } else {
+                        insideLng = PointCluster.xLng(toCluster.x());
+                        insideLat = PointCluster.yLat(toCluster.y());
+                        Cluster elevatedCluster = externalClusterMap.get(fromCluster);
+                        outsideLng = PointCluster.xLng(elevatedCluster.x());
+                        outsideLat = PointCluster.yLat(elevatedCluster.y());
+                    }
+                    Edge e = new Edge(insideLat, insideLng, outsideLat, outsideLng);
+                    if (edges.containsKey(e)) {
+                        edges.put(e, edges.get(e) + 1);
+                    } else {
+                        edges.put(e, 1);
+                        externalCnt += 1;
+                    }
+                }
+                System.out.println("cut time: " + (System.currentTimeMillis() - cutStart));
+
+            } else {
+                for (Edge edge : externalEdgeSet) {
+                    Cluster fromCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getFromLongitude()), PointCluster.latY(edge.getFromLatitude())), zoom);
+                    Cluster toCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getToLongitude()), PointCluster.latY(edge.getToLatitude())), zoom);
+                    double fromLongitude = PointCluster.xLng(fromCluster.x());
+                    double fromLatitude = PointCluster.yLat(fromCluster.y());
+                    double toLongitude = PointCluster.xLng(toCluster.x());
+                    double toLatitude = PointCluster.yLat(toCluster.y());
+                    Edge e = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
+                    if (edges.containsKey(e)) {
+                        edges.put(e, edges.get(e) + 1);
+                    } else {
+                        edges.put(e, 1);
+                        externalCnt += 1;
+                    }
+                }
+            }
             if (bundling == 0) {
                 for (Map.Entry<Edge, Integer> entry : edges.entrySet()) {
                     objectNode = objectMapper.createObjectNode();
@@ -338,6 +449,61 @@ public class GraphController extends Controller {
         objectNode.put("data", json);
         objectNode.put("timestamp", timestamp);
         bundleActor.returnData(objectNode.toString());
+    }
+
+    private HashSet<Cluster> elevateHierarchy(HashSet<Cluster> internalHierarchy) {
+        HashSet<Cluster> tempInternalHierarchy = new HashSet<>();
+        for (Cluster c : internalHierarchy) {
+            if (c.parent != null) {
+                tempInternalHierarchy.add(c.parent);
+            }
+        }
+        return tempInternalHierarchy;
+    }
+
+    private HashMap<Cluster, ArrayList<Cluster>> elevateHierarchy(HashMap<Cluster, ArrayList<Cluster>> externalHierarchy, HashMap<Cluster, Cluster> externalClusterMap) {
+        HashMap<Cluster, ArrayList<Cluster>> tempExternalHierarchy = new HashMap<>();
+        for (Map.Entry<Cluster, ArrayList<Cluster>> entry : externalHierarchy.entrySet()) {
+            Cluster key = entry.getKey();
+            if (key.parent != null) {
+                if (!tempExternalHierarchy.containsKey(key.parent)) {
+                    tempExternalHierarchy.put(key.parent, new ArrayList<>());
+                }
+                tempExternalHierarchy.get(key.parent).addAll(entry.getValue());
+            }
+            // has arrived highest level
+            else {
+                // use level 1 to make the elevation
+                int diff = entry.getValue().get(0).getZoom() - 1;
+                for (Cluster c : entry.getValue()) {
+                    Cluster cPar = c;
+                    for (int i = 0; i < diff; i++) {
+                        cPar = cPar.parent;
+                    }
+                    externalClusterMap.put(c, cPar);
+                }
+            }
+        }
+        return tempExternalHierarchy;
+    }
+
+    private void addClusterHierarchy(HashSet<Cluster> externalCluster, HashSet<Cluster> internalHierarchy) {
+        for (Cluster c : externalCluster) {
+            if (c.parent != null) {
+                internalHierarchy.add(c.parent);
+            }
+        }
+    }
+
+    private void addClusterHierarchy(HashSet<Cluster> externalCluster, HashMap<Cluster, ArrayList<Cluster>> externalHierarchy) {
+        for (Cluster c : externalCluster) {
+            if (c.parent != null) {
+                if (!externalHierarchy.containsKey(c.parent)) {
+                    externalHierarchy.put(c.parent, new ArrayList<>());
+                }
+                externalHierarchy.get(c.parent).add(c);
+            }
+        }
     }
 
     private double sqDistance(double x1, double y1, double x2, double y2) {
