@@ -56,8 +56,7 @@ public class ForceBundling {
     ArrayList<Path> subdivisionPoints = new ArrayList<>();
     ArrayList<ArrayList<Integer>> compatibilityList = new ArrayList<>();
     final double K = 0.1;
-    // S influence the step length, it should be adjusted in the final result
-    final double S_initial = 0.025;
+    double S_initial = 0.02;
     final int P_initial = 1;
     final int P_rate = 2;
     final double C = 3;
@@ -65,10 +64,15 @@ public class ForceBundling {
     final double I_rate = 2.0 / 3.0;
     final double compatibility_threshold = 0.6;
     final double eps = 1e-6;
+    int isolatedEdgesCnt = 0;
 
     public ForceBundling(ArrayList<Vector> dataNodes, ArrayList<EdgeVector> dataEdges) {
         this.dataNodes = dataNodes;
         this.dataEdges = dataEdges;
+    }
+
+    public void setS(int zoom) {
+        S_initial = Math.max(0.025 - zoom * 0.0025, 0.001);
     }
 
     double vectorDotProduct(Vector p, Vector q) {
@@ -274,6 +278,9 @@ public class ForceBundling {
                     compatibilityList.get(e).add(oe);
                     compatibilityList.get(oe).add(e);
                 }
+            }
+            if (compatibilityList.get(e).isEmpty()) {
+                isolatedEdgesCnt++;
             }
         }
     }

@@ -112,7 +112,8 @@ public class Edge {
             return false;
         }
         Edge edge = (Edge) o;
-        return fromLatitude == edge.fromLatitude && fromLongitude == edge.fromLongitude && toLatitude == edge.toLatitude && toLongitude == edge.toLongitude;
+        return (fromLatitude == edge.fromLatitude && fromLongitude == edge.fromLongitude && toLatitude == edge.toLatitude && toLongitude == edge.toLongitude)
+                || (fromLatitude == edge.toLatitude && fromLongitude == edge.toLongitude && toLatitude == edge.fromLatitude && toLongitude == edge.fromLongitude);
     }
 
     public boolean cross(Edge e2) {
@@ -136,10 +137,10 @@ public class Edge {
 
     @Override
     public int hashCode() {
-        if(fromLatitude < toLatitude) {
-            return Objects.hash(fromLatitude, fromLongitude, toLatitude, toLongitude);
-        }else{
-            return Objects.hash(toLatitude, toLongitude, fromLatitude, fromLongitude);
+        if (fromLongitude > toLongitude) {
+            return Objects.hash(toLongitude, toLatitude, fromLongitude, fromLatitude);
+        } else {
+            return Objects.hash(fromLongitude, fromLatitude, toLongitude, toLatitude);
         }
     }
 

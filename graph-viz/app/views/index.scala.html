@@ -37,6 +37,25 @@
                 }
         </style>
 
+        <style>
+                .bottomleft {
+                    position: absolute;
+                    bottom: 32px;
+                    left: 24px;
+                    font-style: italic;
+                    font-size: 18px;
+                }
+
+                .bottomleft p {
+                    margin: 0px 0px 25px;
+                }
+
+                html {
+                    overflow-y: scroll;
+                }
+        </style>
+
+
         <body style="line-height: 0;">
             <div id="map" style="width: 100vw;
                 height: 100vh"></div>
@@ -61,20 +80,31 @@
                     </div>
                     <div class="col-sm-1" style="padding: 0 5px">
                         <div class="form-check" style="margin: 10px 0 0 0">
-                            <input type="checkbox" class="form-check-input" id="inside" onchange="bundle_change()">
-                            <label class="form-check-label" for="exampleCheck1" >Tree Cut</label>
+                            <input type="checkbox" class="form-check-input" id="point" onchange="point_change()" checked>
+                            <label class="form-check-label" for="exampleCheck1" >Point</label>
                         </div>
                     </div>
                     <div class="col-sm-1" style="padding: 0 5px">
                         <div class="form-check" style="margin: 10px 0 0 0">
-                            <input type="checkbox" class="form-check-input" id="point" onchange="point_change()" checked>
-                            <label class="form-check-label" for="exampleCheck1" >Point</label>
+                            <input type="checkbox" class="form-check-input" id="cluster" onchange="cluster_change()" checked>
+                            <label class="form-check-label" for="exampleCheck1" >Cluster</label>
                         </div>
                     </div>
                     <div class="col-sm-1">
                         <button type="submit" onclick="drawGraph()" class=" btn btn-primary" id="submit-button">
                             Show</button>
                     </div>
+                </div>
+            </div>
+            <div id="stats">
+                <div class="bottomleft">
+                    <p id="tweetsCnt">Tweets Count: 15722639</p>
+                    <p id="pointsCnt">Points Count: 0</p>
+                    <p id="clustersCnt">Clusters Count: 0</p>
+                    <p id="edgesCnt">Edges Count: 0</p>
+                    <p id="bundledEdgesCnt">Bundled Edges Count: 0</p>
+                    <p id="clusteringAlgo">Clustering Algorithm: HGC</p>
+                    <p id="bundlingAlgo">Bundling Algorithm: FDEB</p>
                 </div>
             </div>
         </body>
@@ -104,6 +134,7 @@
                 var timerId = 0;
 
                 map.on("moveend", () => {
+                    var currentZoom = Math.floor(map.getZoom());
                     var bounds = map.getBounds();
                     var ne = bounds.getNorthEast();
                     var sw = bounds.getSouthWest();
@@ -113,19 +144,19 @@
                     var minLat = sw.lat;
                     // removeLayer();
                     if (document.getElementById("point").checked === true) {
-                        renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
+                        renderClusterPoints(minLng, minLat, maxLng, maxLat, currentZoom);
                     } else {
                         removeClusterLayer();
                     }
                     if (document.getElementById("checkbox").checked === true) {
-                        renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel, getInside());
+                        renderClusterEdges(minLng, minLat, maxLng, maxLat, currentZoom);
                     } else {
                         removeEdgeClusterLayer();
                     }
                 });
 
                 map.on('zoomend', () => {
-                    const currentZoom = Math.floor(map.getZoom());
+                    var currentZoom = Math.floor(map.getZoom());
                     var bounds = map.getBounds();
                     var ne = bounds.getNorthEast();
                     var sw = bounds.getSouthWest();
@@ -136,12 +167,12 @@
                     // removeLayer();
                     if (zoomLevel !== currentZoom) {
                         if (document.getElementById("point").checked === true) {
-                            renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
+                            renderClusterPoints(minLng, minLat, maxLng, maxLat, currentZoom);
                         } else {
                             removeClusterLayer();
                         }
                         if (document.getElementById("checkbox").checked === true) {
-                            renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel, getInside());
+                            renderClusterEdges(minLng, minLat, maxLng, maxLat, currentZoom);
                         } else {
                             removeEdgeClusterLayer();
                         }
@@ -149,9 +180,15 @@
                     }
                 });
 
-                function renderClusterEdges(minLng, minLat, maxLng, maxLat, zoom, inside) {
-                    if(socket === undefined) {
+                function renderClusterEdges(minLng, minLat, maxLng, maxLat, zoom) {
+                    if (socket === undefined) {
                         return;
+                    }
+                    var clustering_control;
+                    if (document.getElementById("cluster").checked === true) {
+                        clustering_control = 1;
+                    } else {
+                        clustering_control = 0;
                     }
                     var bundling_control;
                     if (document.getElementById("bundle").checked === true) {
@@ -167,7 +204,7 @@
                         lowerLatitude: minLat,
                         upperLatitude: maxLat,
                         bundling: bundling_control,
-                        inside: inside,
+                        clustering: clustering_control,
                         zoom: zoom,
                         timestamp: current_timestamp,
                         option: 2
@@ -201,8 +238,11 @@
                 }
 
                 function renderClusterPoints(minLng, minLat, maxLng, maxLat, zoom) {
-                    if(socket === undefined) {
+                    if (socket === undefined) {
                         return;
+                    }
+                    if (document.getElementById("cluster").checked === false) {
+                        zoom = 18;
                     }
                     const sendingObj = {
                         query: query,
@@ -302,9 +342,6 @@
                             console.log('data is dropped');
                             return;
                         }
-                        // console.log('meta: ' + meta);
-                        // console.log('timestamp: ' + timestamp);
-                        // console.log('current_timestamp: ' + current_timestamp);
                         if (option === 0) {
                             var status = json['flag'];
                             var date = json['date'];
@@ -323,16 +360,18 @@
                                 // console.log('sending: ' + sendingJSON);
                                 socket.send(sendingJSON);
                             }
-                            if (document.getElementById("point").checked === true) {
-                                renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
-                            }
+                            renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
                             if (document.getElementById("checkbox").checked === true) {
-                                renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel, getInside());
+                                renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
                             }
                         } else if (option === 1) {
+                            document.getElementById('pointsCnt').innerHTML = "Points Count: " + json['pointsCnt'];
+                            document.getElementById('clustersCnt').innerHTML = "Clusters Count: " + json['clustersCnt'];
                             data = JSON.parse(json['data']);
                             receiveClusterPoints(data);
                         } else {
+                            document.getElementById('edgesCnt').innerHTML = "Edges Count: " + json['edgesCnt'];
+                            document.getElementById('bundledEdgesCnt').innerHTML = "Bundled Edges Count: " + (json['edgesCnt'] - json['isolatedEdgesCnt']);
                             data = JSON.parse(json['data']);
                             receiveClusterEdges(data);
                         }
@@ -352,7 +391,7 @@
                     var minLng = sw.lng;
                     var minLat = sw.lat;
                     if (document.getElementById("checkbox").checked === true) {
-                        renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel, getInside());
+                        renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
                     } else {
                         if (document.getElementById("bundle").checked === true) {
                             $('#bundle').prop('checked', false);
@@ -377,12 +416,12 @@
                         return;
                     }
                     if (document.getElementById("bundle").checked === true) {
-                        renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel, getInside());
+                        renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
                     } else {
                         if (document.getElementById("checkbox").checked === false) {
                             removeEdgeClusterLayer();
                         } else {
-                            renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel, getInside());
+                            renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
                         }
                     }
                 }
@@ -399,16 +438,34 @@
                         renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
                     } else {
                         removeClusterLayer();
+                        document.getElementById("cluster").checked = false;
                     }
                 }
 
-                function getInside() {
-                    return (document.getElementById("inside").checked === true) ? 1 : 0;
+                function cluster_change() {
+                    var bounds = map.getBounds();
+                    var ne = bounds.getNorthEast();
+                    var sw = bounds.getSouthWest();
+                    var maxLng = ne.lng;
+                    var maxLat = ne.lat;
+                    var minLng = sw.lng;
+                    var minLat = sw.lat;
+                    if (document.getElementById("cluster").checked === true) {
+                        document.getElementById("point").checked = true;
+                    } else {
+                        removeClusterLayer();
+                    }
+                    if (document.getElementById("point").checked === true) {
+                        renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
+                    }
+                    if (document.getElementById("checkbox").checked === true) {
+                        renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
+                    }
                 }
 
                 // send heartbeat package to keep the connection alive
                 function keepAlive() {
-                    console.log("send heartbeat pack.");
+                    // console.log("send heartbeat pack.");
                     var timeout = 20000;
                     if (socket.readyState === WebSocket.OPEN) {
                         socket.send('');
@@ -421,6 +478,7 @@
                         clearTimeout(timerId);
                     }
                 }
+
 
         </script>
 
