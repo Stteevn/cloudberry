@@ -46,7 +46,7 @@
                     font-size: 18px;
                 }
 
-                .bottomleft p {
+                .bottomleft * {
                     margin: 0px 0px 25px;
                 }
 
@@ -103,7 +103,10 @@
                     <p id="clustersCnt">Clusters Count: 0</p>
                     <p id="edgesCnt">Edges Count: 0</p>
                     <p id="bundledEdgesCnt">Bundled Edges Count: 0</p>
-                    <p id="clusteringAlgo">Clustering Algorithm: HGC</p>
+                    <select id="clusteringAlgo">
+                        <option value="HGC">Clustering Algorithm: HGC</option>
+                        <option value="I-KMeans">Clustering Algorithm: I-KMeans</option>
+                    </select>
                     <p id="bundlingAlgo">Bundling Algorithm: FDEB</p>
                 </div>
             </div>
@@ -234,7 +237,18 @@
                     map.addLayer(iconLayer);
                 }
 
+                function getClusteringAlgo() {
+                    var clusteringAlgo;
+                    if (document.getElementById("clusteringAlgo").value === "HGC") {
+                        clusteringAlgo = 0;
+                    } else if (document.getElementById("clusteringAlgo").value === "I-KMeans") {
+                        clusteringAlgo = 1;
+                    }
+                    return clusteringAlgo;
+                }
+
                 function renderClusterPoints(minLng, minLat, maxLng, maxLat, zoom) {
+                    var clusteringAlgo = getClusteringAlgo();
                     if (document.getElementById("cluster").checked === false) {
                         zoom = 18;
                     }
@@ -244,6 +258,7 @@
                         upperLongitude: maxLng,
                         lowerLatitude: minLat,
                         upperLatitude: maxLat,
+                        clusteringAlgo: clusteringAlgo,
                         zoom: zoom,
                         timestamp: current_timestamp,
                         option: 1
@@ -311,9 +326,10 @@
 
                     socket.onopen = function (e) {
                         current_timestamp = Date.now();
+                        var clusteringAlgo = getClusteringAlgo();
                         const sendingObj = {
                             query: query, lowerLongitude: sw_lng, upperLongitude: ne_lng,
-                            lowerLatitude: sw_lat, upperLatitude: ne_lat, timestamp: current_timestamp, option: 0
+                            lowerLatitude: sw_lat, upperLatitude: ne_lat, clusteringAlgo: clusteringAlgo, timestamp: current_timestamp, option: 0
                         };
                         const sendingJSON = JSON.stringify(sendingObj);
                         socket.send(sendingJSON);
@@ -339,6 +355,7 @@
                         if (option === 0) {
                             var status = json['flag'];
                             var date = json['date'];
+                            var clusteringAlgo = getClusteringAlgo();
                             if (status !== 'Y') {
                                 const sendingObj = {
                                     query: query,
@@ -346,6 +363,7 @@
                                     upperLongitude: ne_lng,
                                     lowerLatitude: sw_lat,
                                     upperLatitude: ne_lat,
+                                    clusteringAlgo: clusteringAlgo,
                                     date: date,
                                     timestamp: current_timestamp,
                                     option: 0

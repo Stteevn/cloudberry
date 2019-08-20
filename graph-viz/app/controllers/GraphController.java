@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import models.Cluster;
+import models.IKmeans;
 import models.PointCluster;
 import play.mvc.*;
 import actors.BundleActor;
@@ -25,6 +26,8 @@ import java.util.*;
 public class GraphController extends Controller {
 
     private PointCluster pointCluster = new PointCluster(0, 17);
+    private IKmeans iKmeans = new IKmeans(1);
+    private List<double[]> data = new ArrayList<>();
     // configuration properties
     private Properties configProps;
     private Set<Edge> edgeSet = new HashSet<>();
@@ -83,6 +86,7 @@ public class GraphController extends Controller {
         double upperLongitude = Double.parseDouble(jsonNode.get("upperLongitude").asText());
         double lowerLatitude = Double.parseDouble(jsonNode.get("lowerLatitude").asText());
         double upperLatitude = Double.parseDouble(jsonNode.get("upperLatitude").asText());
+        int clusteringAlgo = Integer.parseInt(jsonNode.get("clusteringAlgo").asText());
         String timestamp = jsonNode.get("timestamp").asText();
 
         String endDate = null;
@@ -94,7 +98,7 @@ public class GraphController extends Controller {
         ObjectNode objectNode = objectMapper.createObjectNode();
         try {
             Edge.set_epsilon(9);
-            objectNode = queryResult(query, endDate, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, timestamp, objectNode);
+            objectNode = queryResult(query, endDate, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, clusteringAlgo, timestamp, objectNode);
             objectNode.put("option", 0);
             json = objectNode.toString();
         } catch (Exception e) {
@@ -104,7 +108,7 @@ public class GraphController extends Controller {
     }
 
     private ObjectNode queryResult(String query, String endDate, double lowerLongitude, double upperLongitude, double lowerLatitude,
-                                   double upperLatitude, String timestamp, ObjectNode objectNode) {
+                                   double upperLatitude, int clusteringAlgo, String timestamp, ObjectNode objectNode) {
         String firstDate = null;
         String lastDate = null;
         int queryPeriod = 0;
@@ -117,11 +121,11 @@ public class GraphController extends Controller {
             System.out.println("The config.properties file does not exist, default properties loaded.");
         }
 
-        getData(query, endDate, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, timestamp, objectNode, firstDate, lastDate, queryPeriod);
+        getData(query, endDate, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, clusteringAlgo, timestamp, objectNode, firstDate, lastDate, queryPeriod);
         return objectNode;
     }
 
-    private void getData(String query, String endDate, double lowerLongitude, double upperLongitude, double lowerLatitude, double upperLatitude, String timestamp, ObjectNode objectNode, String firstDate, String lastDate, int queryPeriod) {
+    private void getData(String query, String endDate, double lowerLongitude, double upperLongitude, double lowerLatitude, double upperLatitude, int clusteringAlgo, String timestamp, ObjectNode objectNode, String firstDate, String lastDate, int queryPeriod) {
         Connection conn;
         PreparedStatement state;
         ResultSet resultSet;
@@ -139,24 +143,42 @@ public class GraphController extends Controller {
             bindFields(objectNode, timestamp, date, c, lastDateCalendar);
             state = prepareState(query, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, conn, date, start);
             resultSet = state.executeQuery();
-            ArrayList<Cluster> points = new ArrayList<>();
-            while (resultSet.next()) {
-                double fromLongitude = resultSet.getDouble("from_longitude");
-                double fromLatitude = resultSet.getDouble("from_latitude");
-                double toLongitude = resultSet.getDouble("to_longitude");
-                double toLatitude = resultSet.getDouble("to_latitude");
-                Edge currentEdge = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
-                if (edgeSet.contains(currentEdge)) continue;
-                points.add(new Cluster(fromLongitude, fromLatitude));
-                points.add(new Cluster(toLongitude, toLatitude));
-                edgeSet.add(currentEdge);
+            if (clusteringAlgo == 0) {
+                loadHGC(resultSet);
             }
-            pointCluster.load(points);
+            else if (clusteringAlgo == 1) {
+                while (resultSet.next()) {
+                    double fromLongitude = resultSet.getDouble("from_longitude");
+                    double fromLatitude = resultSet.getDouble("from_latitude");
+                    double toLongitude = resultSet.getDouble("to_longitude");
+                    double toLatitude = resultSet.getDouble("to_latitude");
+                    Edge currentEdge = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
+                    if (edgeSet.contains(currentEdge)) continue;
+                    data.add(new double[]{fromLongitude, fromLatitude});
+                    data.add(new double[]{toLongitude, toLatitude});
+                }
+            }
             resultSet.close();
             state.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void loadHGC(ResultSet resultSet) throws SQLException {
+        ArrayList<Cluster> points = new ArrayList<>();
+        while (resultSet.next()) {
+            double fromLongitude = resultSet.getDouble("from_longitude");
+            double fromLatitude = resultSet.getDouble("from_latitude");
+            double toLongitude = resultSet.getDouble("to_longitude");
+            double toLatitude = resultSet.getDouble("to_latitude");
+            Edge currentEdge = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
+            if (edgeSet.contains(currentEdge)) continue;
+            points.add(new Cluster(fromLongitude, fromLatitude));
+            points.add(new Cluster(toLongitude, toLatitude));
+            edgeSet.add(currentEdge);
+        }
+        pointCluster.load(points);
     }
 
     private PreparedStatement prepareState(String query, double lowerLongitude, double upperLongitude, double lowerLatitude, double upperLatitude, Connection conn, String date, String start) throws SQLException {
@@ -222,26 +244,32 @@ public class GraphController extends Controller {
         double upperLongitude = Double.parseDouble(jsonNode.get("upperLongitude").asText());
         double lowerLatitude = Double.parseDouble(jsonNode.get("lowerLatitude").asText());
         double upperLatitude = Double.parseDouble(jsonNode.get("upperLatitude").asText());
+        int clusteringAlgo = Integer.parseInt(jsonNode.get("clusteringAlgo").asText());
         String timestamp = jsonNode.get("timestamp").asText();
         int zoom = Integer.parseInt(jsonNode.get("zoom").asText());
         String json = "";
         int pointsCnt = 0;
         int clustersCnt = 0;
-        if (pointCluster != null) {
-            objectMapper = new ObjectMapper();
-            ArrayNode arrayNode = objectMapper.createArrayNode();
-            ArrayList<Cluster> points = pointCluster.getClusters(new double[]{lowerLongitude, lowerLatitude, upperLongitude, upperLatitude}, 18);
-            ArrayList<Cluster> clusters = pointCluster.getClusters(new double[]{lowerLongitude, lowerLatitude, upperLongitude, upperLatitude}, zoom);
-            pointsCnt = points.size();
-            clustersCnt = clusters.size();
-            for (Cluster cluster : clusters) {
-                ObjectNode objectNode = objectMapper.createObjectNode();
-                objectNode.putArray("coordinates").add(PointCluster.xLng(cluster.x())).add(PointCluster.yLat(cluster.y()));
-                objectNode.put("size", cluster.getNumPoints());
-                arrayNode.add(objectNode);
+        if (clusteringAlgo == 0) {
+            if (pointCluster != null) {
+                objectMapper = new ObjectMapper();
+                ArrayNode arrayNode = objectMapper.createArrayNode();
+                ArrayList<Cluster> points = pointCluster.getClusters(new double[]{lowerLongitude, lowerLatitude, upperLongitude, upperLatitude}, 18);
+                ArrayList<Cluster> clusters = pointCluster.getClusters(new double[]{lowerLongitude, lowerLatitude, upperLongitude, upperLatitude}, zoom);
+                pointsCnt = points.size();
+                clustersCnt = clusters.size();
+                for (Cluster cluster : clusters) {
+                    ObjectNode objectNode = objectMapper.createObjectNode();
+                    objectNode.putArray("coordinates").add(PointCluster.xLng(cluster.x())).add(PointCluster.yLat(cluster.y()));
+                    objectNode.put("size", cluster.getNumPoints());
+                    arrayNode.add(objectNode);
+                }
+                json = arrayNode.toString();
+                System.out.printf("The number of points is %d\n", clusters.size());
             }
-            json = arrayNode.toString();
-            System.out.printf("The number of points is %d\n", clusters.size());
+        }
+        else if (clusteringAlgo == 1) {
+
         }
         ObjectNode objectNode = objectMapper.createObjectNode();
         objectNode.put("option", 1);
