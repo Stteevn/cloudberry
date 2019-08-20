@@ -192,6 +192,9 @@
                 });
 
                 function renderClusterEdges(minLng, minLat, maxLng, maxLat, zoom) {
+                    if (socket === undefined) {
+                        return;
+                    }
                     var clustering_control;
                     if (document.getElementById("cluster").checked === true) {
                         clustering_control = 1;
@@ -257,6 +260,9 @@
 
                 function renderClusterPoints(minLng, minLat, maxLng, maxLat, zoom) {
                     var clusteringAlgo = getClusteringAlgo();
+                    if (socket === undefined) {
+                        return;
+                    }
                     if (document.getElementById("cluster").checked === false) {
                         zoom = 18;
                     }
@@ -473,7 +479,7 @@
 
                 // send heartbeat package to keep the connection alive
                 function keepAlive() {
-                    console.log("send heartbeat pack.");
+                    // console.log("send heartbeat pack.");
                     var timeout = 20000;
                     if (socket.readyState === WebSocket.OPEN) {
                         socket.send('');
@@ -486,6 +492,7 @@
                         clearTimeout(timerId);
                     }
                 }
+
 
         </script>
 

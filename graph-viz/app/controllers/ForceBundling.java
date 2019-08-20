@@ -56,7 +56,7 @@ public class ForceBundling {
     ArrayList<Path> subdivisionPoints = new ArrayList<>();
     ArrayList<ArrayList<Integer>> compatibilityList = new ArrayList<>();
     final double K = 0.1;
-    final double S_initial = 0.02;
+    double S_initial = 0.02;
     final int P_initial = 1;
     final int P_rate = 2;
     final double C = 3;
@@ -71,9 +71,9 @@ public class ForceBundling {
         this.dataEdges = dataEdges;
     }
 
-//    public void setZoomLevel(int zoom) {
-//        S_initial = 0.01;
-//    }
+    public void setS(int zoom) {
+        S_initial = Math.max(0.025 - zoom * 0.0025, 0.001);
+    }
 
     double vectorDotProduct(Vector p, Vector q) {
         return p.x * q.x + p.y * q.y;
