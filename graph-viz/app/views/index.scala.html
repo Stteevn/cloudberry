@@ -150,6 +150,9 @@
                 });
 
                 function renderClusterEdges(minLng, minLat, maxLng, maxLat, zoom, inside) {
+                    if(socket === undefined) {
+                        return;
+                    }
                     var bundling_control;
                     if (document.getElementById("bundle").checked === true) {
                         bundling_control = 1;
@@ -198,6 +201,9 @@
                 }
 
                 function renderClusterPoints(minLng, minLat, maxLng, maxLat, zoom) {
+                    if(socket === undefined) {
+                        return;
+                    }
                     const sendingObj = {
                         query: query,
                         lowerLongitude: minLng,

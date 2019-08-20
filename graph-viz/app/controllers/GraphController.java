@@ -7,12 +7,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import models.Cluster;
 import models.PointCluster;
-import org.checkerframework.checker.units.qual.A;
-import org.checkerframework.checker.units.qual.C;
-import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 import play.mvc.*;
 import actors.BundleActor;
-import sun.util.resources.cldr.de.CalendarData_de_LU;
 
 import java.io.IOException;
 import java.sql.*;
@@ -271,10 +267,9 @@ public class GraphController extends Controller {
         ArrayNode arrayNode = objectMapper.createArrayNode();
         if (pointCluster != null) {
             HashMap<Edge, Integer> edges = new HashMap<>();
-            int externalCnt = 0;
+            HashSet<Edge> externalEdgeSet = new HashSet<>();
             HashSet<Cluster> externalCluster = new HashSet<>();
             HashSet<Cluster> internalCluster = new HashSet<>();
-            HashSet<Edge> externalEdgeSet = new HashSet<>();
             for (Edge edge : edgeSet) {
                 Cluster fromCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getFromLongitude()), PointCluster.latY(edge.getFromLatitude())), zoom);
                 Cluster toCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getToLongitude()), PointCluster.latY(edge.getToLatitude())), zoom);
@@ -317,7 +312,7 @@ public class GraphController extends Controller {
                 HashMap<Cluster, Cluster> externalClusterMap = new HashMap<>();
                 HashMap<Cluster, ArrayList<Cluster>> externalHierarchy = new HashMap<>();
                 HashSet<Cluster> internalHierarchy = new HashSet<>();
-                addClusterHierarchy(externalCluster, externalHierarchy);
+                addClusterHierarchy(externalCluster, externalHierarchy, externalClusterMap);
                 addClusterHierarchy(internalCluster, internalHierarchy);
                 while (true) {
                     ArrayList<Cluster> removeKeyList = new ArrayList<>();
@@ -375,7 +370,6 @@ public class GraphController extends Controller {
                         edges.put(e, edges.get(e) + 1);
                     } else {
                         edges.put(e, 1);
-                        externalCnt += 1;
                     }
                 }
                 System.out.println("cut time: " + (System.currentTimeMillis() - cutStart));
@@ -393,7 +387,6 @@ public class GraphController extends Controller {
                         edges.put(e, edges.get(e) + 1);
                     } else {
                         edges.put(e, 1);
-                        externalCnt += 1;
                     }
                 }
             }
@@ -495,7 +488,7 @@ public class GraphController extends Controller {
         }
     }
 
-    private void addClusterHierarchy(HashSet<Cluster> externalCluster, HashMap<Cluster, ArrayList<Cluster>> externalHierarchy) {
+    private void addClusterHierarchy(HashSet<Cluster> externalCluster, HashMap<Cluster, ArrayList<Cluster>> externalHierarchy, HashMap<Cluster, Cluster> externalClusterMap) {
         for (Cluster c : externalCluster) {
             if (c.parent != null) {
                 if (!externalHierarchy.containsKey(c.parent)) {
@@ -503,7 +496,13 @@ public class GraphController extends Controller {
                 }
                 externalHierarchy.get(c.parent).add(c);
             }
+            // has arrived highest level
+            else {
+                // use level 1 to make the elevation
+                externalClusterMap.put(c, c);
+            }
         }
+
     }
 
     private double sqDistance(double x1, double y1, double x2, double y2) {
