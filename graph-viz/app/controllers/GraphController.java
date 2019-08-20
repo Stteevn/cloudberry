@@ -301,14 +301,7 @@ public class GraphController extends Controller {
                     }
                     externalEdgeSet.add(edge);
                 }
-            }
-            System.out.println("The keyword is " + jsonNode.get("query").asText() + ", The zoom level is " + zoom);
-            System.out.printf("The number of internal edges is %d\n", edges.size());
-            System.out.println("The number of internal cluster is " + internalCluster.size());
-            System.out.println("The number of external cluster is " + externalCluster.size());
-            System.out.printf("The number of external edges before is %d\n", externalEdgeSet.size());
-            if (inside == 1) {
-                long cutStart = System.currentTimeMillis();
+            }if (inside == 1) {
                 HashMap<Cluster, Cluster> externalClusterMap = new HashMap<>();
                 HashMap<Cluster, ArrayList<Cluster>> externalHierarchy = new HashMap<>();
                 HashSet<Cluster> internalHierarchy = new HashSet<>();
@@ -372,8 +365,6 @@ public class GraphController extends Controller {
                         edges.put(e, 1);
                     }
                 }
-                System.out.println("cut time: " + (System.currentTimeMillis() - cutStart));
-
             } else {
                 for (Edge edge : externalEdgeSet) {
                     Cluster fromCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getFromLongitude()), PointCluster.latY(edge.getFromLatitude())), zoom);
