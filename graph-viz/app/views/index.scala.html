@@ -46,7 +46,7 @@
                     font-size: 18px;
                 }
 
-                .bottomleft * {
+                .bottomleft p {
                     margin: 0px 0px 25px;
                 }
 
@@ -103,11 +103,19 @@
                     <p id="clustersCnt">Clusters Count: 0</p>
                     <p id="edgesCnt">Edges Count: 0</p>
                     <p id="bundledEdgesCnt">Bundled Edges Count: 0</p>
-                    <select id="clusteringAlgo">
-                        <option value="HGC">Clustering Algorithm: HGC</option>
-                        <option value="I-KMeans">Clustering Algorithm: I-KMeans</option>
-                    </select>
-                    <p id="bundlingAlgo">Bundling Algorithm: FDEB</p>
+                    <form>
+                        Clustering Algorithm:
+                        <select id="clusteringAlgo" onchange="drawGraph()">
+                            <option value="HGC">HGC</option>
+                            <option value="I-KMeans">I-KMeans</option>
+                        </select>
+                    </form>
+                    <form>
+                        Bundling Algorithm:
+                        <select id="bundlingAlgo">
+                            <option value="FDEB">FDEB</option>
+                        </select>
+                    </form>
                 </div>
             </div>
         </body>
@@ -314,13 +322,6 @@
                 function drawGraph() {
                     removeLayer();
                     query = document.getElementById("keyword-textbox").value;
-                    var bounds = map.getBounds();
-                    var ne = bounds.getNorthEast();
-                    var sw = bounds.getSouthWest();
-                    var ne_lng = ne.lng;
-                    var ne_lat = ne.lat;
-                    var sw_lng = sw.lng;
-                    var sw_lat = sw.lat;
 
                     socket = new WebSocket("ws://localhost:9000/replies");
 
@@ -328,8 +329,7 @@
                         current_timestamp = Date.now();
                         var clusteringAlgo = getClusteringAlgo();
                         const sendingObj = {
-                            query: query, lowerLongitude: sw_lng, upperLongitude: ne_lng,
-                            lowerLatitude: sw_lat, upperLatitude: ne_lat, clusteringAlgo: clusteringAlgo, timestamp: current_timestamp, option: 0
+                            query: query, clusteringAlgo: clusteringAlgo, timestamp: current_timestamp, option: 0
                         };
                         const sendingJSON = JSON.stringify(sendingObj);
                         socket.send(sendingJSON);
@@ -359,10 +359,6 @@
                             if (status !== 'Y') {
                                 const sendingObj = {
                                     query: query,
-                                    lowerLongitude: sw_lng,
-                                    upperLongitude: ne_lng,
-                                    lowerLatitude: sw_lat,
-                                    upperLatitude: ne_lat,
                                     clusteringAlgo: clusteringAlgo,
                                     date: date,
                                     timestamp: current_timestamp,

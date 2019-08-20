@@ -27,7 +27,6 @@ public class GraphController extends Controller {
 
     private PointCluster pointCluster = new PointCluster(0, 17);
     private IKmeans iKmeans;
-    private List<double[]> data = new ArrayList<>();
     // configuration properties
     private Properties configProps;
     private Set<Edge> edgeSet = new HashSet<>();
@@ -152,6 +151,7 @@ public class GraphController extends Controller {
     }
 
     private void loadIKmeans(ResultSet resultSet) throws SQLException {
+        List<double[]> data = new ArrayList<>();
         while (resultSet.next()) {
             double fromLongitude = resultSet.getDouble("from_longitude");
             double fromLatitude = resultSet.getDouble("from_latitude");
@@ -168,17 +168,7 @@ public class GraphController extends Controller {
             iKmeans.setDataSet(data);
             iKmeans.init();
         }
-        iKmeans.init2();
-        iKmeans.setDataSet(data);
-        iKmeans.clusterSet();
-        iKmeans.setNewCenter();
-        for (int j = 0; j < iKmeans.getK(); j++) {
-            iKmeans.allCluster.get(j).addAll(iKmeans.cluster.get(j));
-        }
-        iKmeans.cluster.clear();
-        iKmeans.cluster = iKmeans.initCluster();
-        iKmeans.pointsCnt += data.size();
-        data.clear();
+        iKmeans.loadBatchData(data);
     }
 
     private void loadHGC(ResultSet resultSet) throws SQLException {

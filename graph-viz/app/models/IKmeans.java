@@ -258,4 +258,17 @@ public class IKmeans {
             cluster = initCluster();
         }
     }
+
+    public void loadBatchData(List<double[]> data) {
+        setDataSet(data);
+        init2();
+        clusterSet();
+        setNewCenter();
+        for (int j = 0; j < getK(); j++) {
+            allCluster.get(j).addAll(cluster.get(j));
+        }
+        cluster.clear();
+        cluster = initCluster();
+        pointsCnt += data.size();
+    }
 }
