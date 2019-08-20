@@ -80,9 +80,9 @@ public class KdTree {
 
         while (n != null) {
             // return if point is already in the tree
-            if (n.getPoint().equals(p)) {
-                return;
-            }
+//            if (n.getPoint().equals(p)) {
+//                return;
+//            }
             // if we are at a vertical node
             if (n.vertical()) {
                 comparator = Cluster.X_ORDER;

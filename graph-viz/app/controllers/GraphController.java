@@ -26,7 +26,7 @@ import java.util.*;
 public class GraphController extends Controller {
 
     private PointCluster pointCluster = new PointCluster(0, 17);
-    private IKmeans iKmeans = new IKmeans(1);
+    private IKmeans iKmeans;
     private List<double[]> data = new ArrayList<>();
     // configuration properties
     private Properties configProps;
@@ -82,10 +82,6 @@ public class GraphController extends Controller {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        double lowerLongitude = Double.parseDouble(jsonNode.get("lowerLongitude").asText());
-        double upperLongitude = Double.parseDouble(jsonNode.get("upperLongitude").asText());
-        double lowerLatitude = Double.parseDouble(jsonNode.get("lowerLatitude").asText());
-        double upperLatitude = Double.parseDouble(jsonNode.get("upperLatitude").asText());
         int clusteringAlgo = Integer.parseInt(jsonNode.get("clusteringAlgo").asText());
         String timestamp = jsonNode.get("timestamp").asText();
 
@@ -98,7 +94,7 @@ public class GraphController extends Controller {
         ObjectNode objectNode = objectMapper.createObjectNode();
         try {
             Edge.set_epsilon(9);
-            objectNode = queryResult(query, endDate, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, clusteringAlgo, timestamp, objectNode);
+            objectNode = queryResult(query, endDate, clusteringAlgo, timestamp, objectNode);
             objectNode.put("option", 0);
             json = objectNode.toString();
         } catch (Exception e) {
@@ -107,8 +103,7 @@ public class GraphController extends Controller {
         bundleActor.returnData(json);
     }
 
-    private ObjectNode queryResult(String query, String endDate, double lowerLongitude, double upperLongitude, double lowerLatitude,
-                                   double upperLatitude, int clusteringAlgo, String timestamp, ObjectNode objectNode) {
+    private ObjectNode queryResult(String query, String endDate, int clusteringAlgo, String timestamp, ObjectNode objectNode) {
         String firstDate = null;
         String lastDate = null;
         int queryPeriod = 0;
@@ -121,11 +116,11 @@ public class GraphController extends Controller {
             System.out.println("The config.properties file does not exist, default properties loaded.");
         }
 
-        getData(query, endDate, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, clusteringAlgo, timestamp, objectNode, firstDate, lastDate, queryPeriod);
+        getData(query, endDate, clusteringAlgo, timestamp, objectNode, firstDate, lastDate, queryPeriod);
         return objectNode;
     }
 
-    private void getData(String query, String endDate, double lowerLongitude, double upperLongitude, double lowerLatitude, double upperLatitude, int clusteringAlgo, String timestamp, ObjectNode objectNode, String firstDate, String lastDate, int queryPeriod) {
+    private void getData(String query, String endDate, int clusteringAlgo, String timestamp, ObjectNode objectNode, String firstDate, String lastDate, int queryPeriod) {
         Connection conn;
         PreparedStatement state;
         ResultSet resultSet;
@@ -141,28 +136,49 @@ public class GraphController extends Controller {
             lastDateCalendar.setTime(sdf.parse(lastDate));
 
             bindFields(objectNode, timestamp, date, c, lastDateCalendar);
-            state = prepareState(query, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, conn, date, start);
+            state = prepareState(query, conn, date, start);
             resultSet = state.executeQuery();
             if (clusteringAlgo == 0) {
                 loadHGC(resultSet);
             }
             else if (clusteringAlgo == 1) {
-                while (resultSet.next()) {
-                    double fromLongitude = resultSet.getDouble("from_longitude");
-                    double fromLatitude = resultSet.getDouble("from_latitude");
-                    double toLongitude = resultSet.getDouble("to_longitude");
-                    double toLatitude = resultSet.getDouble("to_latitude");
-                    Edge currentEdge = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
-                    if (edgeSet.contains(currentEdge)) continue;
-                    data.add(new double[]{fromLongitude, fromLatitude});
-                    data.add(new double[]{toLongitude, toLatitude});
-                }
+                loadIKmeans(resultSet);
             }
             resultSet.close();
             state.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void loadIKmeans(ResultSet resultSet) throws SQLException {
+        while (resultSet.next()) {
+            double fromLongitude = resultSet.getDouble("from_longitude");
+            double fromLatitude = resultSet.getDouble("from_latitude");
+            double toLongitude = resultSet.getDouble("to_longitude");
+            double toLatitude = resultSet.getDouble("to_latitude");
+            Edge currentEdge = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
+            if (edgeSet.contains(currentEdge)) continue;
+            data.add(new double[]{fromLongitude, fromLatitude});
+            data.add(new double[]{toLongitude, toLatitude});
+            edgeSet.add(currentEdge);
+        }
+        if (iKmeans == null) {
+            iKmeans = new IKmeans(17);
+            iKmeans.setDataSet(data);
+            iKmeans.init();
+        }
+        iKmeans.init2();
+        iKmeans.setDataSet(data);
+        iKmeans.clusterSet();
+        iKmeans.setNewCenter();
+        for (int j = 0; j < iKmeans.getK(); j++) {
+            iKmeans.allCluster.get(j).addAll(iKmeans.cluster.get(j));
+        }
+        iKmeans.cluster.clear();
+        iKmeans.cluster = iKmeans.initCluster();
+        iKmeans.pointsCnt += data.size();
+        data.clear();
     }
 
     private void loadHGC(ResultSet resultSet) throws SQLException {
@@ -181,7 +197,7 @@ public class GraphController extends Controller {
         pointCluster.load(points);
     }
 
-    private PreparedStatement prepareState(String query, double lowerLongitude, double upperLongitude, double lowerLatitude, double upperLatitude, Connection conn, String date, String start) throws SQLException {
+    private PreparedStatement prepareState(String query, Connection conn, String date, String start) throws SQLException {
         PreparedStatement state;
         String searchQuery = "select from_longitude, from_latitude, to_longitude, to_latitude "
                 + "from replytweets where ( to_tsvector('english', from_text) @@ to_tsquery( ? ) or "
@@ -265,11 +281,24 @@ public class GraphController extends Controller {
                     arrayNode.add(objectNode);
                 }
                 json = arrayNode.toString();
-                System.out.printf("The number of points is %d\n", clusters.size());
+                System.out.printf("The number of points is %d\n", clustersCnt);
             }
         }
         else if (clusteringAlgo == 1) {
-
+            if (iKmeans != null) {
+                objectMapper = new ObjectMapper();
+                ArrayNode arrayNode = objectMapper.createArrayNode();
+                pointsCnt = iKmeans.pointsCnt;
+                clustersCnt = iKmeans.getK();
+                for (int i = 0; i < iKmeans.getK(); i++) {
+                    ObjectNode objectNode = objectMapper.createObjectNode();
+                    objectNode.putArray("coordinates").add(iKmeans.center.get(i)[0]).add(iKmeans.center.get(i)[1]);
+                    objectNode.put("size", iKmeans.allCluster.get(i).size());
+                    arrayNode.add(objectNode);
+                }
+                json = arrayNode.toString();
+                System.out.printf("The number of points is %d\n", clustersCnt);
+            }
         }
         ObjectNode objectNode = objectMapper.createObjectNode();
         objectNode.put("option", 1);

@@ -12,9 +12,10 @@ public class IKmeans {
     private int m;// 迭代次数
     private int dataSetLength;// 数据集元素个数，即数据集的长度
     private List<double[]> dataSet;// 数据集链表
-    private ArrayList<double[]> center;// 中心链表
-    private List<List<double[]>> cluster; // 簇
-    private List<List<double[]>> allCluster;
+    public ArrayList<double[]> center;// 中心链表
+    public List<List<double[]>> cluster; // 簇
+    public List<List<double[]>> allCluster;
+    public int pointsCnt;
     private ArrayList<Double> jc;// 误差平方和，k越接近dataSetLength，误差越小
     private Random random;
 
@@ -57,7 +58,7 @@ public class IKmeans {
     /**
      * 初始化
      */
-    private void init() {
+    public void init() {
         m = 0;
         random = new Random();
         dataSetLength = dataSet.size();
@@ -73,14 +74,9 @@ public class IKmeans {
         jc = new ArrayList<>();
     }
 
-    private void init2() {
+    public void init2() {
         m = 0;
         dataSetLength = dataSet.size();
-
-        if (k > dataSetLength) {
-            k = dataSetLength;
-        }
-
         jc = new ArrayList<>();
     }
 
@@ -123,7 +119,7 @@ public class IKmeans {
      *
      * @return 一个分为k簇的空数据的簇集合
      */
-    private List<List<double[]>> initCluster() {
+    public List<List<double[]>> initCluster() {
         List<List<double[]>> cluster = new ArrayList<>();
         for (int i = 0; i < k; i++) {
             cluster.add(new ArrayList<>());
@@ -176,7 +172,7 @@ public class IKmeans {
     /**
      * 核心，将当前元素放到最小距离中心相关的簇中
      */
-    private void clusterSet() {
+    public void clusterSet() {
         double[] distance = new double[k];
         for (int i = 0; i < dataSetLength; i++) {
             for (int j = 0; j < k; j++) {
@@ -226,7 +222,7 @@ public class IKmeans {
     /**
      * 设置新的簇中心方法
      */
-    private void setNewCenter() {
+    public void setNewCenter() {
         for (int i = 0; i < k; i++) {
             int n = cluster.get(i).size();
             if (n != 0) {
