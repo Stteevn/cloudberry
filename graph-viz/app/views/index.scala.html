@@ -108,6 +108,7 @@
                         <select id="clusteringAlgo" onchange="drawGraph()">
                             <option value="HGC">HGC</option>
                             <option value="I-KMeans">I-KMeans</option>
+                            <option value="KMeans">KMeans</option>
                         </select>
                     </form>
                     <form>
@@ -192,6 +193,7 @@
                 });
 
                 function renderClusterEdges(minLng, minLat, maxLng, maxLat, zoom) {
+                    var clusteringAlgo = getClusteringAlgo();
                     if (socket === undefined) {
                         return;
                     }
@@ -214,6 +216,7 @@
                         upperLongitude: maxLng,
                         lowerLatitude: minLat,
                         upperLatitude: maxLat,
+                        clusteringAlgo: clusteringAlgo,
                         bundling: bundling_control,
                         clustering: clustering_control,
                         zoom: zoom,
@@ -254,6 +257,8 @@
                         clusteringAlgo = 0;
                     } else if (document.getElementById("clusteringAlgo").value === "I-KMeans") {
                         clusteringAlgo = 1;
+                    } else if (document.getElementById("clusteringAlgo").value === "KMeans") {
+                        clusteringAlgo = 2;
                     }
                     return clusteringAlgo;
                 }

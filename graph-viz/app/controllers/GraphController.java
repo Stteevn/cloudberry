@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import models.Cluster;
 import models.IKmeans;
+import models.Kmeans;
 import models.PointCluster;
 import play.mvc.*;
 import actors.BundleActor;
@@ -27,6 +28,7 @@ public class GraphController extends Controller {
 
     private PointCluster pointCluster = new PointCluster(0, 17);
     private IKmeans iKmeans;
+    private Kmeans kmeans;
     // configuration properties
     private Properties configProps;
     private Set<Edge> edgeSet = new HashSet<>();
@@ -143,6 +145,18 @@ public class GraphController extends Controller {
             else if (clusteringAlgo == 1) {
                 loadIKmeans(resultSet);
             }
+            else if (clusteringAlgo == 2) {
+                start = firstDate;
+                date = lastDate;
+                c.setTime(sdf.parse(date));
+                bindFields(objectNode, timestamp, date, c, lastDateCalendar);
+                state = prepareState(query, conn, date, start);
+                long beforequery = System.currentTimeMillis();
+                resultSet = state.executeQuery();
+                long queryTime = System.currentTimeMillis() - beforequery;
+                System.out.println("query time: " + queryTime + "ms");
+                loadKmeans(resultSet);
+            }
             resultSet.close();
             state.close();
         } catch (Exception e) {
@@ -150,7 +164,7 @@ public class GraphController extends Controller {
         }
     }
 
-    private void loadIKmeans(ResultSet resultSet) throws SQLException {
+    private List<double[]> loadKmeansData(ResultSet resultSet) throws SQLException {
         List<double[]> data = new ArrayList<>();
         while (resultSet.next()) {
             double fromLongitude = resultSet.getDouble("from_longitude");
@@ -163,6 +177,20 @@ public class GraphController extends Controller {
             data.add(new double[]{toLongitude, toLatitude});
             edgeSet.add(currentEdge);
         }
+        return data;
+    }
+
+    private void loadKmeans(ResultSet resultSet) throws SQLException {
+        List<double[]> data = loadKmeansData(resultSet);
+        if (kmeans == null) {
+            kmeans = new Kmeans(17);
+        }
+        kmeans.setDataSet(data);
+        kmeans.execute();
+    }
+
+    private void loadIKmeans(ResultSet resultSet) throws SQLException {
+        List<double[]> data = loadKmeansData(resultSet);
         if (iKmeans == null) {
             iKmeans = new IKmeans(17);
             iKmeans.setDataSet(data);
@@ -284,6 +312,22 @@ public class GraphController extends Controller {
                 System.out.printf("The number of points is %d\n", clustersCnt);
             }
         }
+        else if (clusteringAlgo == 2) {
+            if (kmeans != null) {
+                objectMapper = new ObjectMapper();
+                ArrayNode arrayNode = objectMapper.createArrayNode();
+                pointsCnt = kmeans.getDataSetLength();
+                clustersCnt = kmeans.getK();
+                for (int i = 0; i < kmeans.getK(); i++) {
+                    ObjectNode objectNode = objectMapper.createObjectNode();
+                    objectNode.putArray("coordinates").add(kmeans.getCenter().get(i)[0]).add(kmeans.getCenter().get(i)[1]);
+                    objectNode.put("size", kmeans.getCluster().get(i).size());
+                    arrayNode.add(objectNode);
+                }
+                json = arrayNode.toString();
+                System.out.printf("The number of points is %d\n", clustersCnt);
+            }
+        }
         ObjectNode objectNode = objectMapper.createObjectNode();
         objectNode.put("option", 1);
         objectNode.put("data", json);
@@ -305,6 +349,7 @@ public class GraphController extends Controller {
         double upperLongitude = Double.parseDouble(jsonNode.get("upperLongitude").asText());
         double lowerLatitude = Double.parseDouble(jsonNode.get("lowerLatitude").asText());
         double upperLatitude = Double.parseDouble(jsonNode.get("upperLatitude").asText());
+        int clusteringAlgo = Integer.parseInt(jsonNode.get("clusteringAlgo").asText());
         String timestamp = jsonNode.get("timestamp").asText();
         int zoom = Integer.parseInt(jsonNode.get("zoom").asText());
         int bundling = Integer.parseInt(jsonNode.get("bundling").asText());
