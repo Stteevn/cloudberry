@@ -265,11 +265,13 @@
 
                 function renderClusterPoints(minLng, minLat, maxLng, maxLat, zoom) {
                     var clusteringAlgo = getClusteringAlgo();
+                    var clustering_control = 1;
                     if (socket === undefined) {
                         return;
                     }
                     if (document.getElementById("cluster").checked === false) {
                         zoom = 18;
+                        clustering_control = 0;
                     }
                     const sendingObj = {
                         query: query,
@@ -278,6 +280,7 @@
                         lowerLatitude: minLat,
                         upperLatitude: maxLat,
                         clusteringAlgo: clusteringAlgo,
+                        clustering: clustering_control,
                         zoom: zoom,
                         timestamp: current_timestamp,
                         option: 1
@@ -334,7 +337,7 @@
                     removeLayer();
                     query = document.getElementById("keyword-textbox").value;
 
-                    socket = new WebSocket("ws://localhost:9000/replies");
+                    socket = new WebSocket("ws://cloudberry05.ics.uci.edu:2335/replies");
 
                     socket.onopen = function (e) {
                         current_timestamp = Date.now();

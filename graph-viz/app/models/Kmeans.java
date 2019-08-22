@@ -3,6 +3,7 @@ package models;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 
@@ -18,6 +19,15 @@ public class Kmeans {
     private List<List<double[]>> cluster; // 簇
     private ArrayList<Double> jc;// 误差平方和，k越接近dataSetLength，误差越小
     private Random random;
+    private HashMap<Point, Integer> parents = new HashMap<>();
+
+    public List<double[]> getDataSet() {
+        return dataSet;
+    }
+
+    public HashMap<Point, Integer> getParents() {
+        return parents;
+    }
 
     public ArrayList<double[]> getCenter() {
         return center;
@@ -198,7 +208,15 @@ public class Kmeans {
             // System.out.println();
 
             cluster.get(minLocation).add(dataSet.get(i));// 核心，将当前元素放到最小距离中心相关的簇中
+        }
+    }
 
+    private void findParents() {
+        for (int i = 0; i < cluster.size(); i++) {
+            for (int j = 0; j < cluster.get(i).size(); j++) {
+                Point point = new Point(cluster.get(i).get(j)[0] ,cluster.get(i).get(j)[1]);
+                parents.put(point, i);
+            }
         }
     }
 
@@ -291,6 +309,7 @@ public class Kmeans {
             // 误差不变了，分组完成
             if (m != 0) {
                 if (jc.get(m) - jc.get(m - 1) == 0) {
+                    findParents();
                     break;
                 }
             }

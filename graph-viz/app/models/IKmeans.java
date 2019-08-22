@@ -1,7 +1,5 @@
 package models;
 
-import controllers.Edge;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -15,13 +13,13 @@ public class IKmeans {
     private int m;// 迭代次数
     private int dataSetLength;// 数据集元素个数，即数据集的长度
     private List<double[]> dataSet;// 数据集链表
-    public ArrayList<double[]> center;// 中心链表
-    public List<List<double[]>> cluster; // 簇
-    public List<List<double[]>> allCluster;
+    private ArrayList<double[]> center;// 中心链表
+    private List<List<double[]>> cluster; // 簇
+    private List<List<double[]>> allCluster;
     public int pointsCnt;
     private ArrayList<Double> jc;// 误差平方和，k越接近dataSetLength，误差越小
     private Random random;
-    public HashMap<double[], Integer> edges = new HashMap<>();
+    private HashMap<Point, Integer> parents = new HashMap<>();
 
     /**
      * 设置需分组的原始数据集
@@ -43,8 +41,20 @@ public class IKmeans {
      * @return 结果集
      */
 
-    public List<List<double[]>> getCluster() {
+    public List<List<double[]>> getAllCluster() {
         return allCluster;
+    }
+
+    public List<List<double[]>> getCluster() {
+        return cluster;
+    }
+
+    public ArrayList<double[]> getCenter() {
+        return center;
+    }
+
+    public HashMap<Point, Integer> getParents() {
+        return parents;
     }
 
     /**
@@ -189,9 +199,8 @@ public class IKmeans {
             // System.out.println();
 
             cluster.get(minLocation).add(dataSet.get(i));// 核心，将当前元素放到最小距离中心相关的簇中
-            if (!edges.containsKey(dataSet.get(i))) {
-                edges.put(dataSet.get(i), minLocation);
-            }
+            Point point = new Point(dataSet.get(i)[0], dataSet.get(i)[1]);
+            parents.put(point, minLocation);
         }
     }
 
