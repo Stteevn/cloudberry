@@ -98,7 +98,7 @@
             </div>
             <div id="stats">
                 <div class="bottomleft">
-                    <p id="tweetsCnt">Tweets Count: 15722639</p>
+                    <p id="repliesCnt">Reply Tweets Count: 0 / 15722639</p>
                     <p id="pointsCnt">Points Count: 0</p>
                     <p id="clustersCnt">Clusters Count: 0</p>
                     <p id="edgesCnt">Edges Count: 0</p>
@@ -392,6 +392,7 @@
                             data = JSON.parse(json['data']);
                             receiveClusterPoints(data);
                         } else {
+                            document.getElementById('repliesCnt').innerHTML = "Reply Tweets Count: " + json['repliesCnt'] + " / 15722639";
                             document.getElementById('edgesCnt').innerHTML = "Edges Count: " + json['edgesCnt'];
                             document.getElementById('bundledEdgesCnt').innerHTML = "Bundled Edges Count: " + (json['edgesCnt'] - json['isolatedEdgesCnt']);
                             data = JSON.parse(json['data']);

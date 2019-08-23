@@ -384,6 +384,7 @@ public class GraphController extends Controller {
         ObjectNode objectNode = objectMapper.createObjectNode();
         ArrayNode arrayNode = objectMapper.createArrayNode();
         int edgesCnt = 0;
+        int repliesCnt = edgeSet.size();
         if (clusteringAlgo == 0) {
             if (pointCluster != null) {
                 HashMap<Edge, Integer> edges = new HashMap<>();
@@ -508,6 +509,7 @@ public class GraphController extends Controller {
         } else if (clusteringAlgo == 2) {
             getKmeansEdges(objectMapper, zoom, bundling, clustering, objectNode, arrayNode, kmeans != null, kmeans.getParents(), kmeans.getCenter());
         }
+        objectNode.put("repliesCnt", repliesCnt);
         objectNode.put("option", 2);
         objectNode.put("timestamp", timestamp);
         bundleActor.returnData(objectNode.toString());
