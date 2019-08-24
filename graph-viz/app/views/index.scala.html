@@ -62,7 +62,7 @@
             <div id="search">
                 <div class="row"></div>
                 <div class="row">
-                    <div class="col-sm-2"></div>
+                    <div class="col-sm-1"></div>
                     <input type="text" style="width: 40%"
                     class="form-control col-sm-4 ng-pristine ng-untouched ng-empty ng-invalid ng-invalid-required"
                     id="keyword-textbox" placeholder="Search keywords e.g hurricane">
@@ -88,6 +88,12 @@
                         <div class="form-check" style="margin: 10px 0 0 0">
                             <input type="checkbox" class="form-check-input" id="cluster" onchange="cluster_change()" checked>
                             <label class="form-check-label" for="exampleCheck1" >Cluster</label>
+                        </div>
+                    </div>
+                    <div class="col-sm-1" style="padding: 0 5px">
+                        <div class="form-check" style="margin: 10px 0 0 0">
+                            <input type="checkbox" class="form-check-input" id="tree_cut" onchange="bundle_change()" checked>
+                            <label class="form-check-label" for="exampleCheck1" >Tree cut</label>
                         </div>
                     </div>
                     <div class="col-sm-1">
@@ -209,7 +215,18 @@
                     } else {
                         bundling_control = 0;
                     }
-
+                    var cut_control;
+                    if (document.getElementById("cluster").checked === false) {
+                        if (document.getElementById("tree_cut").checked === true) {
+                            alert("Please select tree cut with cluster.");
+                            $('#tree_cut').prop('checked', false);
+                        }
+                    }
+                    if (document.getElementById("tree_cut").checked === true) {
+                        cut_control = 1;
+                    } else {
+                        cut_control = 0;
+                    }
                     const sendingObj = {
                         query: query,
                         lowerLongitude: minLng,
@@ -218,6 +235,7 @@
                         upperLatitude: maxLat,
                         clusteringAlgo: clusteringAlgo,
                         bundling: bundling_control,
+                        treeCut: cut_control,
                         clustering: clustering_control,
                         zoom: zoom,
                         timestamp: current_timestamp,
@@ -229,11 +247,6 @@
                 }
 
                 function receiveClusterEdges(data) {
-                    // console.log(data[data.length - 1]);
-                    if (!$('#bundle').prop('checked')) {
-                        $("#variance").text("crossed edges: " + data[data.length - 1] + "%");
-                    }
-                    data.pop();
                     const iconLayer = new MapboxLayer({
                         id: 'edgeCluster',
                         type: LineLayer,
