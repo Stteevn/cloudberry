@@ -1,4 +1,6 @@
-package models;
+package algorithm;
+
+import models.Point;
 
 import java.util.ArrayList;
 import java.util.HashMap;

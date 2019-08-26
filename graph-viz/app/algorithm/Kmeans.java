@@ -1,4 +1,6 @@
-package models;
+package algorithm;
+
+import models.Point;
 
 import java.text.DecimalFormat;
 import java.text.NumberFormat;

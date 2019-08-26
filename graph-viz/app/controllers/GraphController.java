@@ -1,7 +1,11 @@
 package controllers;
 
-import Utils.DatabaseUtils;
-import Utils.PropertiesUtil;
+import algorithm.ForceBundling;
+import algorithm.IKmeans;
+import algorithm.Kmeans;
+import algorithm.PointCluster;
+import utils.DatabaseUtils;
+import utils.PropertiesUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -534,7 +538,7 @@ public class GraphController extends Controller {
         bundleActor.returnData(objectNode.toString());
     }
 
-    private void getKmeansEdges(ObjectMapper objectMapper, int zoom, int bundling, int clustering, ObjectNode objectNode, ArrayNode arrayNode, boolean b, HashMap<Point, Integer> parents, ArrayList<double[]> center) {
+    private void getKmeansEdges(ObjectMapper objectMapper, int zoom, int bundling, int clustering, ObjectNode objectNode, ArrayNode arrayNode, boolean b, HashMap<models.Point, Integer> parents, ArrayList<double[]> center) {
         int edgesCnt;
         if (b) {
             HashMap<Edge, Integer> edges = new HashMap<>();
@@ -552,8 +556,8 @@ public class GraphController extends Controller {
                     double fromLatitude = edge.getFromLatitude();
                     double toLongitude = edge.getToLongitude();
                     double toLatitude = edge.getToLatitude();
-                    Point fromPoint = new Point(fromLongitude, fromLatitude);
-                    Point toPoint = new Point(toLongitude, toLatitude);
+                    models.Point fromPoint = new models.Point(fromLongitude, fromLatitude);
+                    models.Point toPoint = new models.Point(toLongitude, toLatitude);
                     int fromCluster = parents.get(fromPoint);
                     int toCluster = parents.get(toPoint);
                     Edge e = new Edge(center.get(fromCluster)[1],
@@ -580,15 +584,15 @@ public class GraphController extends Controller {
     private void runFDEB(ObjectMapper objectMapper, int zoom, ObjectNode objectNode, HashMap<Edge, Integer> edges) {
         int isolatedEdgesCnt;
         String json;
-        ArrayList<Vector> dataNodes = new ArrayList<>();
+        ArrayList<Point> dataNodes = new ArrayList<>();
         ArrayList<EdgeVector> dataEdges = new ArrayList<>();
         ArrayList<Integer> closeEdgeList = new ArrayList<>();
         for (Map.Entry<Edge, Integer> entry : edges.entrySet()) {
             Edge edge = entry.getKey();
             if (sqDistance(edge.getFromLongitude(), edge.getFromLatitude(), edge.getToLongitude(), edge.getToLatitude()) <= 0.001)
                 continue;
-            dataNodes.add(new Vector(edge.getFromLongitude(), edge.getFromLatitude()));
-            dataNodes.add(new Vector(edge.getToLongitude(), edge.getToLatitude()));
+            dataNodes.add(new Point(edge.getFromLongitude(), edge.getFromLatitude()));
+            dataNodes.add(new Point(edge.getToLongitude(), edge.getToLatitude()));
             dataEdges.add(new EdgeVector(dataNodes.size() - 2, dataNodes.size() - 1));
             closeEdgeList.add(entry.getValue());
         }
@@ -598,18 +602,18 @@ public class GraphController extends Controller {
         ArrayList<Path> pathResult = forceBundling.forceBundle();
         long bundlingTime = System.currentTimeMillis() - beforeBundling;
         System.out.println("bundling time: " + bundlingTime + "ms");
-        isolatedEdgesCnt = forceBundling.isolatedEdgesCnt;
+        isolatedEdgesCnt = forceBundling.getIsolatedEdgesCnt();
         ArrayNode pathJson = objectMapper.createArrayNode();
         int edgeNum = 0;
         for (Path path : pathResult) {
-            for (int j = 0; j < path.alv.size() - 1; j++) {
+            for (int j = 0; j < path.getAlv().size() - 1; j++) {
                 ObjectNode lineNode = objectMapper.createObjectNode();
                 ArrayNode fromArray = objectMapper.createArrayNode();
-                fromArray.add(path.alv.get(j).x);
-                fromArray.add(path.alv.get(j).y);
+                fromArray.add(path.getAlv().get(j).getX());
+                fromArray.add(path.getAlv().get(j).getY());
                 ArrayNode toArray = objectMapper.createArrayNode();
-                toArray.add(path.alv.get(j + 1).x);
-                toArray.add(path.alv.get(j + 1).y);
+                toArray.add(path.getAlv().get(j + 1).getX());
+                toArray.add(path.getAlv().get(j + 1).getY());
                 lineNode.putArray("from").addAll(fromArray);
                 lineNode.putArray("to").addAll(toArray);
                 lineNode.put("width", closeEdgeList.get(edgeNum));

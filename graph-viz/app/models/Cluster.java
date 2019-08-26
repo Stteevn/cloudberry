@@ -1,5 +1,7 @@
 package models;
 
+import algorithm.PointCluster;
+
 import java.util.Comparator;
 
 public class Cluster implements Comparable<Cluster> {

@@ -1,4 +1,8 @@
-package models;
+package algorithm;
+
+import models.Cluster;
+import models.KdTree;
+import models.Rectangle;
 
 import java.util.ArrayList;
 
