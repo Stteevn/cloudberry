@@ -5,15 +5,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import controllers.GraphController;
-import utils.DatabaseUtils;
 import utils.PropertiesUtil;
-import utils.QueryStatement;
 
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -25,12 +19,7 @@ public class IncrementalQuery {
     // Configuration properties
     private Properties configProps;
 
-    // Indicates the sending process is completed
-    private static final String finished = "Y";
-    // Indicates the sending process is not completed
-    private static final String unfinished = "N";
-
-    public void incrementalQuery(GraphController graphController, String query, BundleActor bundleActor) {
+    public void prepareIncremental(GraphController graphController, String query, BundleActor bundleActor) {
         context = graphController;
         // parse the json and initialize the variables
         ObjectMapper objectMapper = new ObjectMapper();
@@ -73,53 +62,22 @@ public class IncrementalQuery {
     }
 
     private void queryClusterWithSlice(String query, String endDate, int clusteringAlgo, String timestamp, ObjectNode objectNode, String firstDate, String lastDate, int queryPeriod) {
-        Connection conn;
-        PreparedStatement state;
-        ResultSet resultSet;
         Calendar c, lastDateCalendar;
         SimpleDateFormat sdf;
         String start, date;
         try {
             sdf = new SimpleDateFormat("yyyyMMddHHmmss");
-            conn = DatabaseUtils.getConnection();
             date = getDate(endDate, firstDate);
             start = date;
             c = incrementCalendar(queryPeriod, date, sdf);
             date = sdf.format(c.getTime());
             lastDateCalendar = Calendar.getInstance();
             lastDateCalendar.setTime(sdf.parse(lastDate));
-            bindFields(objectNode, timestamp, date, c, lastDateCalendar);
-            state = prepareStatement(query, conn, date, start);
-            resultSet = state.executeQuery();
-            context.runCluster(query, clusteringAlgo, timestamp, objectNode, firstDate, lastDate, conn, state, resultSet, c, lastDateCalendar, sdf);
+            context.doIncrementalQuery(query, clusteringAlgo, timestamp, objectNode, firstDate, lastDate, c, lastDateCalendar, sdf, start, date);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-
-    public static PreparedStatement prepareStatement(String query, Connection conn, String date, String start) throws SQLException {
-        PreparedStatement state;
-        String searchQuery = QueryStatement.incrementalStatement;
-        state = conn.prepareStatement(searchQuery);
-        state.setString(1, query);
-        state.setString(2, query);
-        state.setString(3, start);
-        state.setString(4, date);
-        return state;
-    }
-
-    public static void bindFields(ObjectNode objectNode, String timestamp, String date, Calendar c, Calendar lastDateCalendar) {
-        objectNode.put("date", date);
-        objectNode.put("timestamp", timestamp);
-        if (!c.before(lastDateCalendar)) {
-            System.out.println(finished + date);
-            objectNode.put("flag", finished);
-        } else {
-            System.out.println(unfinished + date);
-            objectNode.put("flag", unfinished);
-        }
-    }
-
 
     private Calendar incrementCalendar(int queryPeriod, String date, SimpleDateFormat sdf) throws ParseException {
         Calendar c = Calendar.getInstance();

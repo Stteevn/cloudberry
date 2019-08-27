@@ -1,8 +1,6 @@
 package controllers;
 
 import algorithms.*;
-import utils.DatabaseUtils;
-import utils.PropertiesUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -10,7 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import models.*;
 import play.mvc.*;
 import actors.BundleActor;
-import utils.QueryStatement;
+import utils.DatabaseUtils;
 
 import java.io.IOException;
 import java.sql.*;
@@ -25,6 +23,10 @@ import java.util.*;
 
 public class GraphController extends Controller {
 
+    // Indicates the sending process is completed
+    private static final String finished = "Y";
+    // Indicates the sending process is not completed
+    private static final String unfinished = "N";
     // hierarchical structure for HGC algorithm
     private PointCluster pointCluster = new PointCluster(0, 17);
     private IKmeans iKmeans;
@@ -63,7 +65,7 @@ public class GraphController extends Controller {
         }
         switch (option) {
             case 0:
-                new IncrementalQuery().incrementalQuery(this, query, bundleActor);
+                new IncrementalQuery().prepareIncremental(this, query, bundleActor);
                 break;
             case 1:
                 cluster(query, bundleActor);
@@ -77,7 +79,18 @@ public class GraphController extends Controller {
         }
     }
 
-    public void runCluster(String query, int clusteringAlgo, String timestamp, ObjectNode objectNode, String firstDate, String lastDate, Connection conn, PreparedStatement state, ResultSet resultSet, Calendar c, Calendar lastDateCalendar, SimpleDateFormat sdf) throws ParseException, SQLException {
+    public void doIncrementalQuery(String query, int clusteringAlgo, String timestamp, ObjectNode objectNode,
+                                   String firstDate, String lastDate, Calendar c, Calendar lastDateCalendar,
+                                   SimpleDateFormat sdf, String start, String date)
+            throws SQLException, ParseException, ClassNotFoundException {
+        Connection conn = DatabaseUtils.getConnection();
+        PreparedStatement state = DatabaseUtils.prepareStatement(query, conn, date, start);
+        ResultSet resultSet = state.executeQuery();
+        bindFields(objectNode, timestamp, date, c, lastDateCalendar);
+        runCluster(query, clusteringAlgo, timestamp, objectNode, firstDate, lastDate, conn, state, resultSet, c, lastDateCalendar, sdf);
+    }
+
+    private void runCluster(String query, int clusteringAlgo, String timestamp, ObjectNode objectNode, String firstDate, String lastDate, Connection conn, PreparedStatement state, ResultSet resultSet, Calendar c, Calendar lastDateCalendar, SimpleDateFormat sdf) throws ParseException, SQLException {
         String start;
         String date;
         if (clusteringAlgo == 0) {
@@ -88,8 +101,8 @@ public class GraphController extends Controller {
             start = firstDate;
             date = lastDate;
             c.setTime(sdf.parse(date));
-            IncrementalQuery.bindFields(objectNode, timestamp, date, c, lastDateCalendar);
-            state = IncrementalQuery.prepareStatement(query, conn, date, start);
+            bindFields(objectNode, timestamp, date, c, lastDateCalendar);
+            state = DatabaseUtils.prepareStatement(query, conn, date, start);
             resultSet = state.executeQuery();
             loadKmeans(resultSet);
         }
@@ -146,6 +159,18 @@ public class GraphController extends Controller {
             edgeSet.add(currentEdge);
         }
         pointCluster.load(points);
+    }
+
+    private static void bindFields(ObjectNode objectNode, String timestamp, String date, Calendar c, Calendar lastDateCalendar) {
+        objectNode.put("date", date);
+        objectNode.put("timestamp", timestamp);
+        if (!c.before(lastDateCalendar)) {
+            System.out.println(finished + date);
+            objectNode.put("flag", finished);
+        } else {
+            System.out.println(unfinished + date);
+            objectNode.put("flag", unfinished);
+        }
     }
 
     public void cluster(String query, BundleActor bundleActor) {
@@ -356,7 +381,6 @@ public class GraphController extends Controller {
     }
 
 
-
     private void getKmeansEdges(ObjectMapper objectMapper, int zoom, int bundling, int clustering, ObjectNode objectNode, ArrayNode arrayNode, boolean b, HashMap<models.Point, Integer> parents, ArrayList<double[]> center) {
         int edgesCnt;
         if (b) {
@@ -466,5 +490,6 @@ public class GraphController extends Controller {
     private double sqDistance(double x1, double y1, double x2, double y2) {
         return Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2);
     }
+
 
 }
