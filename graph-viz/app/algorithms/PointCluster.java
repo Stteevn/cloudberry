@@ -1,4 +1,4 @@
-package algorithm;
+package algorithms;
 
 import models.Cluster;
 import models.KdTree;

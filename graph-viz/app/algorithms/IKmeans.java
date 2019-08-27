@@ -1,9 +1,7 @@
-package algorithm;
+package algorithms;
 
 import models.Point;
 
-import java.text.DecimalFormat;
-import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -12,36 +10,18 @@ import java.util.Random;
 /**
  * K均值聚类算法
  */
-public class Kmeans {
+public class IKmeans {
     private int k;// 分成多少簇
     private int m;// 迭代次数
     private int dataSetLength;// 数据集元素个数，即数据集的长度
     private List<double[]> dataSet;// 数据集链表
     private ArrayList<double[]> center;// 中心链表
     private List<List<double[]>> cluster; // 簇
+    private List<List<double[]>> allCluster;
+    public int pointsCnt;
     private ArrayList<Double> jc;// 误差平方和，k越接近dataSetLength，误差越小
     private Random random;
     private HashMap<Point, Integer> parents = new HashMap<>();
-
-    public List<double[]> getDataSet() {
-        return dataSet;
-    }
-
-    public HashMap<Point, Integer> getParents() {
-        return parents;
-    }
-
-    public ArrayList<double[]> getCenter() {
-        return center;
-    }
-
-    public int getDataSetLength() {
-        return dataSetLength;
-    }
-
-    public int getK() {
-        return k;
-    }
 
     /**
      * 设置需分组的原始数据集
@@ -53,14 +33,30 @@ public class Kmeans {
         this.dataSet = dataSet;
     }
 
+    public int getK() {
+        return k;
+    }
+
     /**
      * 获取结果分组
      *
      * @return 结果集
      */
 
+    public List<List<double[]>> getAllCluster() {
+        return allCluster;
+    }
+
     public List<List<double[]>> getCluster() {
         return cluster;
+    }
+
+    public ArrayList<double[]> getCenter() {
+        return center;
+    }
+
+    public HashMap<Point, Integer> getParents() {
+        return parents;
     }
 
     /**
@@ -68,7 +64,7 @@ public class Kmeans {
      *
      * @param k 簇数量,若k<=0时，设置为1，若k大于数据源的长度时，置为数据源的长度
      */
-    public Kmeans(int k) {
+    public IKmeans(int k) {
         if (k <= 0) {
             k = 1;
         }
@@ -78,31 +74,26 @@ public class Kmeans {
     /**
      * 初始化
      */
-    private void init() {
+    public void init() {
         m = 0;
         random = new Random();
-        if (dataSet == null || dataSet.size() == 0) {
-            initDataSet();
-        }
         dataSetLength = dataSet.size();
+        if (k > dataSetLength) {
+            k = dataSetLength;
+        }
+        allCluster = new ArrayList<>();
+        for (int i = 0; i < k; i++) {
+            allCluster.add(new ArrayList<>());
+        }
         center = initCenters();
         cluster = initCluster();
         jc = new ArrayList<>();
     }
 
-    /**
-     * 如果调用者未初始化数据集，则采用内部测试数据集
-     */
-    private void initDataSet() {
-        dataSet = new ArrayList<double[]>();
-        // 其中{6,3}是一样的，所以长度为15的数据集分成14簇和15簇的误差都为0
-        double[][] dataSetArray = new double[][]{{8, 2}, {3, 4}, {2, 5},
-                {4, 2}, {7, 3}, {6, 2}, {4, 7}, {6, 3}, {5, 3},
-                {6, 3}, {6, 9}, {1, 6}, {3, 9}, {4, 1}, {8, 6}};
-
-        for (int i = 0; i < dataSetArray.length; i++) {
-            dataSet.add(dataSetArray[i]);
-        }
+    public void init2() {
+        m = 0;
+        dataSetLength = dataSet.size();
+        jc = new ArrayList<>();
     }
 
     /**
@@ -111,7 +102,7 @@ public class Kmeans {
      * @return 中心点集
      */
     private ArrayList<double[]> initCenters() {
-        ArrayList<double[]> center = new ArrayList<double[]>();
+        ArrayList<double[]> center = new ArrayList<>();
         int[] randoms = new int[k];
         boolean flag;
         int temp = random.nextInt(dataSetLength);
@@ -144,10 +135,10 @@ public class Kmeans {
      *
      * @return 一个分为k簇的空数据的簇集合
      */
-    private List<List<double[]>> initCluster() {
+    public List<List<double[]>> initCluster() {
         List<List<double[]>> cluster = new ArrayList<>();
         for (int i = 0; i < k; i++) {
-            cluster.add(new ArrayList<double[]>());
+            cluster.add(new ArrayList<>());
         }
 
         return cluster;
@@ -197,7 +188,7 @@ public class Kmeans {
     /**
      * 核心，将当前元素放到最小距离中心相关的簇中
      */
-    private void clusterSet() {
+    public void clusterSet() {
         double[] distance = new double[k];
         for (int i = 0; i < dataSetLength; i++) {
             for (int j = 0; j < k; j++) {
@@ -210,15 +201,8 @@ public class Kmeans {
             // System.out.println();
 
             cluster.get(minLocation).add(dataSet.get(i));// 核心，将当前元素放到最小距离中心相关的簇中
-        }
-    }
-
-    private void findParents() {
-        for (int i = 0; i < cluster.size(); i++) {
-            for (int j = 0; j < cluster.get(i).size(); j++) {
-                Point point = new Point(cluster.get(i).get(j)[0] ,cluster.get(i).get(j)[1]);
-                parents.put(point, i);
-            }
+            Point point = new Point(dataSet.get(i)[0], dataSet.get(i)[1]);
+            parents.put(point, minLocation);
         }
     }
 
@@ -255,7 +239,7 @@ public class Kmeans {
     /**
      * 设置新的簇中心方法
      */
-    private void setNewCenter() {
+    public void setNewCenter() {
         for (int i = 0; i < k; i++) {
             int n = cluster.get(i).size();
             if (n != 0) {
@@ -265,95 +249,43 @@ public class Kmeans {
                     newCenter[1] += cluster.get(i).get(j)[1];
                 }
                 // 设置一个平均值
-                newCenter[0] = newCenter[0] / n;
-                newCenter[1] = newCenter[1] / n;
+                newCenter[0] += center.get(i)[0] * allCluster.get(i).size();
+                newCenter[0] = newCenter[0] / (n + allCluster.get(i).size());
+                newCenter[1] += center.get(i)[1] * allCluster.get(i).size();
+                newCenter[1] = newCenter[1] / (n + allCluster.get(i).size());
                 center.set(i, newCenter);
             }
         }
     }
 
-    /**
-     * 打印数据，测试用
-     *
-     * @param dataArray     数据集
-     * @param dataArrayName 数据集名称
-     */
-    public void printDataArray(ArrayList<double[]> dataArray,
-                               String dataArrayName) {
-        for (int i = 0; i < dataArray.size(); i++) {
-            System.out.println("print:" + dataArrayName + "[" + i + "]={"
-                    + dataArray.get(i)[0] + "," + dataArray.get(i)[1] + "}");
-        }
-        System.out.println("===================================");
-    }
-
-    /**
-     * Kmeans算法核心过程方法
-     */
-    public void kmeans() {
+    public void loadExperiment(List<List<double[]>> batchData) {
+        setDataSet(batchData.get(0));
         init();
-        // printDataArray(dataSet,"initDataSet");
-        // printDataArray(center,"initCenter");
-
-        // 循环分组，直到误差不变为止
-        while (true) {
+        for (int i = 0; i < batchData.size(); i++) {
+            init2();
+            setDataSet(batchData.get(i));
             clusterSet();
-            // for(int i=0;i<cluster.size();i++)
-            // {
-            // printDataArray(cluster.get(i),"cluster["+i+"]");
-            // }
+            setNewCenter();
 
-            countRule();
-
-            // System.out.println("count:"+"jc["+m+"]="+jc.get(m));
-
-            // System.out.println();
-            // 误差不变了，分组完成
-            if (m != 0) {
-                if (jc.get(m) - jc.get(m - 1) == 0) {
-                    findParents();
-                    break;
-                }
+            for (int j = 0; j < k; j++) {
+                allCluster.get(j).addAll(cluster.get(j));
             }
 
-            setNewCenter();
-            // printDataArray(center,"newCenter");
-            m++;
             cluster.clear();
             cluster = initCluster();
         }
-
-        System.out.println("note:the times of repeat:m=" + m);//输出迭代次数
     }
 
-    /**
-     * 执行算法
-     */
-    public void execute() {
-        long startTime = System.currentTimeMillis();
-        System.out.println("kmeans begins");
-        kmeans();
-        long endTime = System.currentTimeMillis();
-        System.out.println("kmeans running time=" + (endTime - startTime)
-                + "ms");
-        System.out.println("kmeans ends");
-        System.out.println();
-    }
-
-
-    public static void main(String[] args) {
-        int k = 100;
-        Kmeans kmeans = new Kmeans(k);
-        ArrayList<double[]> dataSet = new ArrayList<>();
-        int tot = 640000;
-        for (int i = 0; i < tot; i++) {
-            dataSet.add(new double[]{(double) Math.random(), (double) Math.random()});
+    public void loadBatchData(List<double[]> data) {
+        setDataSet(data);
+        init2();
+        clusterSet();
+        setNewCenter();
+        for (int j = 0; j < getK(); j++) {
+            allCluster.get(j).addAll(cluster.get(j));
         }
-        long startTime = System.currentTimeMillis();
-        kmeans.setDataSet(dataSet);
-        kmeans.execute();
-        long endTime = System.currentTimeMillis();
-        NumberFormat formatter = new DecimalFormat("#0.00000");
-        System.out.print("Execution time is " + formatter.format((endTime - startTime) / 1000d) + " seconds");
+        cluster.clear();
+        cluster = initCluster();
+        pointsCnt += data.size();
     }
 }

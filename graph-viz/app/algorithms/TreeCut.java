@@ -1,4 +1,4 @@
-package algorithm;
+package algorithms;
 
 import models.Cluster;
 import models.Edge;
@@ -135,5 +135,22 @@ public class TreeCut {
             }
         }
 
+    }
+
+    public void nonTreeCut(PointCluster pointCluster, int zoom, HashMap<Edge, Integer> edges, HashSet<Edge> externalEdgeSet) {
+        for (Edge edge : externalEdgeSet) {
+            Cluster fromCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getFromLongitude()), PointCluster.latY(edge.getFromLatitude())), zoom);
+            Cluster toCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getToLongitude()), PointCluster.latY(edge.getToLatitude())), zoom);
+            double fromLongitude = PointCluster.xLng(fromCluster.x());
+            double fromLatitude = PointCluster.yLat(fromCluster.y());
+            double toLongitude = PointCluster.xLng(toCluster.x());
+            double toLatitude = PointCluster.yLat(toCluster.y());
+            Edge e = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
+            if (edges.containsKey(e)) {
+                edges.put(e, edges.get(e) + 1);
+            } else {
+                edges.put(e, 1);
+            }
+        }
     }
 }

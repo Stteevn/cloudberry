@@ -1,6 +1,6 @@
 package controllers;
 
-import algorithm.*;
+import algorithms.*;
 import utils.DatabaseUtils;
 import utils.PropertiesUtil;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import models.*;
 import play.mvc.*;
 import actors.BundleActor;
+import utils.QueryStatement;
 
 import java.io.IOException;
 import java.sql.*;
@@ -26,18 +27,10 @@ public class GraphController extends Controller {
 
     // hierarchical structure for HGC algorithm
     private PointCluster pointCluster = new PointCluster(0, 17);
-    //
     private IKmeans iKmeans;
-    //
     private Kmeans kmeans;
-    // Configuration properties
-    private Properties configProps;
     // Incremental edge data
     private Set<Edge> edgeSet = new HashSet<>();
-    // Indicates the sending process is completed
-    private final String finished = "Y";
-    // Indicates the sending process is not completed
-    private final String unfinished = "N";
 
     /**
      * Dispatcher for the request message.
@@ -70,7 +63,7 @@ public class GraphController extends Controller {
         }
         switch (option) {
             case 0:
-                getData(query, bundleActor);
+                new IncrementalQuery().incrementalQuery(this, query, bundleActor);
                 break;
             case 1:
                 cluster(query, bundleActor);
@@ -84,92 +77,24 @@ public class GraphController extends Controller {
         }
     }
 
-    public void getData(String query, BundleActor bundleActor) {
-        // parse the json and initialize the variables
-        ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode jsonNode = null;
-        try {
-            jsonNode = objectMapper.readTree(query);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        int clusteringAlgo = Integer.parseInt(jsonNode.get("clusteringAlgo").asText());
-        String timestamp = jsonNode.get("timestamp").asText();
-
-        String endDate = null;
-        query = jsonNode.get("query").asText();
-        if (jsonNode.has("date")) {
-            endDate = jsonNode.get("date").asText();
-        }
-        String json = "";
-        try {
-            ObjectNode objectNode = objectMapper.createObjectNode();
-            Edge.set_epsilon(9);
-            objectNode = queryResult(query, endDate, clusteringAlgo, timestamp, objectNode);
-            objectNode.put("option", 0);
-            json = objectNode.toString();
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-        }
-        bundleActor.returnData(json);
-    }
-
-    private ObjectNode queryResult(String query, String endDate, int clusteringAlgo, String timestamp, ObjectNode objectNode) {
-        String firstDate = null;
-        String lastDate = null;
-        int queryPeriod = 0;
-        try {
-            configProps = PropertiesUtil.loadProperties(configProps);
-            firstDate = configProps.getProperty("firstDate");
-            lastDate = configProps.getProperty("lastDate");
-            queryPeriod = Integer.parseInt(configProps.getProperty("queryPeriod"));
-        } catch (IOException ex) {
-            System.out.println("The config.properties file does not exist, default properties loaded.");
-        }
-
-        getData(query, endDate, clusteringAlgo, timestamp, objectNode, firstDate, lastDate, queryPeriod);
-        return objectNode;
-    }
-
-    private void getData(String query, String endDate, int clusteringAlgo, String timestamp, ObjectNode objectNode, String firstDate, String lastDate, int queryPeriod) {
-        Connection conn;
-        PreparedStatement state;
-        ResultSet resultSet;
-        try {
-            conn = DatabaseUtils.getConnection();
-
-            String date = getDate(endDate, firstDate);
-            String start = date;
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
-            Calendar c = incrementCalendar(queryPeriod, date, sdf);
-            date = sdf.format(c.getTime());
-            Calendar lastDateCalendar = Calendar.getInstance();
-            lastDateCalendar.setTime(sdf.parse(lastDate));
-
-            bindFields(objectNode, timestamp, date, c, lastDateCalendar);
-            state = prepareState(query, conn, date, start);
+    public void runCluster(String query, int clusteringAlgo, String timestamp, ObjectNode objectNode, String firstDate, String lastDate, Connection conn, PreparedStatement state, ResultSet resultSet, Calendar c, Calendar lastDateCalendar, SimpleDateFormat sdf) throws ParseException, SQLException {
+        String start;
+        String date;
+        if (clusteringAlgo == 0) {
+            loadHGC(resultSet);
+        } else if (clusteringAlgo == 1) {
+            loadIKmeans(resultSet);
+        } else if (clusteringAlgo == 2) {
+            start = firstDate;
+            date = lastDate;
+            c.setTime(sdf.parse(date));
+            IncrementalQuery.bindFields(objectNode, timestamp, date, c, lastDateCalendar);
+            state = IncrementalQuery.prepareStatement(query, conn, date, start);
             resultSet = state.executeQuery();
-            if (clusteringAlgo == 0) {
-                loadHGC(resultSet);
-            } else if (clusteringAlgo == 1) {
-                loadIKmeans(resultSet);
-            } else if (clusteringAlgo == 2) {
-                start = firstDate;
-                date = lastDate;
-                c.setTime(sdf.parse(date));
-                bindFields(objectNode, timestamp, date, c, lastDateCalendar);
-                state = prepareState(query, conn, date, start);
-                long beforequery = System.currentTimeMillis();
-                resultSet = state.executeQuery();
-                long queryTime = System.currentTimeMillis() - beforequery;
-                System.out.println("query time: " + queryTime + "ms");
-                loadKmeans(resultSet);
-            }
-            resultSet.close();
-            state.close();
-        } catch (Exception e) {
-            e.printStackTrace();
+            loadKmeans(resultSet);
         }
+        resultSet.close();
+        state.close();
     }
 
     private List<double[]> loadKmeansData(ResultSet resultSet) throws SQLException {
@@ -221,51 +146,6 @@ public class GraphController extends Controller {
             edgeSet.add(currentEdge);
         }
         pointCluster.load(points);
-    }
-
-    private PreparedStatement prepareState(String query, Connection conn, String date, String start) throws SQLException {
-        PreparedStatement state;
-        String searchQuery = "select from_longitude, from_latitude, to_longitude, to_latitude "
-                + "from replytweets where ( to_tsvector('english', from_text) @@ to_tsquery( ? ) or "
-                + "to_tsvector('english', to_text) "
-                + "@@ to_tsquery( ? )) AND to_create_at::timestamp > TO_TIMESTAMP( ? , 'yyyymmddhh24miss') "
-                + "AND to_create_at::timestamp <= TO_TIMESTAMP( ? , 'yyyymmddhh24miss');";
-        state = conn.prepareStatement(searchQuery);
-        state.setString(1, query);
-        state.setString(2, query);
-        state.setString(3, start);
-        state.setString(4, date);
-        return state;
-    }
-
-    private void bindFields(ObjectNode objectNode, String timestamp, String date, Calendar c, Calendar lastDateCalendar) {
-        objectNode.put("date", date);
-        objectNode.put("timestamp", timestamp);
-        if (!c.before(lastDateCalendar)) {
-            System.out.println(finished + date);
-            objectNode.put("flag", finished);
-        } else {
-            System.out.println(unfinished + date);
-            objectNode.put("flag", unfinished);
-        }
-    }
-
-
-    private Calendar incrementCalendar(int queryPeriod, String date, SimpleDateFormat sdf) throws ParseException {
-        Calendar c = Calendar.getInstance();
-        c.setTime(sdf.parse(date));
-        c.add(Calendar.HOUR, queryPeriod);  // number of days to add
-        return c;
-    }
-
-    private String getDate(String endDate, String firstDate) {
-        String date;
-        if (endDate == null) {
-            date = firstDate;  // Start date
-        } else {
-            date = endDate;
-        }
-        return date;
     }
 
     public void cluster(String query, BundleActor bundleActor) {
@@ -378,7 +258,7 @@ public class GraphController extends Controller {
         bundleActor.returnData(objectNode.toString());
     }
 
-    public void edgeCluster(String query, BundleActor bundleActor) {
+    private void edgeCluster(String query, BundleActor bundleActor) {
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode jsonNode = null;
         try {
@@ -448,11 +328,11 @@ public class GraphController extends Controller {
                             externalEdgeSet.add(edge);
                         }
                     }
+                    TreeCut treeCutInstance = new TreeCut();
                     if (treeCutting == 1) {
-                        TreeCut treeCutInstance = new TreeCut();
                         treeCutInstance.treeCut(pointCluster, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, zoom, edges, externalEdgeSet, externalCluster, internalCluster);
                     } else {
-                        nonTreeCut(zoom, edges, externalEdgeSet);
+                        treeCutInstance.nonTreeCut(pointCluster, zoom, edges, externalEdgeSet);
                     }
 
                 }
@@ -475,22 +355,7 @@ public class GraphController extends Controller {
         bundleActor.returnData(objectNode.toString());
     }
 
-    private void nonTreeCut(int zoom, HashMap<Edge, Integer> edges, HashSet<Edge> externalEdgeSet) {
-        for (Edge edge : externalEdgeSet) {
-            Cluster fromCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getFromLongitude()), PointCluster.latY(edge.getFromLatitude())), zoom);
-            Cluster toCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getToLongitude()), PointCluster.latY(edge.getToLatitude())), zoom);
-            double fromLongitude = PointCluster.xLng(fromCluster.x());
-            double fromLatitude = PointCluster.yLat(fromCluster.y());
-            double toLongitude = PointCluster.xLng(toCluster.x());
-            double toLatitude = PointCluster.yLat(toCluster.y());
-            Edge e = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
-            if (edges.containsKey(e)) {
-                edges.put(e, edges.get(e) + 1);
-            } else {
-                edges.put(e, 1);
-            }
-        }
-    }
+
 
     private void getKmeansEdges(ObjectMapper objectMapper, int zoom, int bundling, int clustering, ObjectNode objectNode, ArrayNode arrayNode, boolean b, HashMap<models.Point, Integer> parents, ArrayList<double[]> center) {
         int edgesCnt;

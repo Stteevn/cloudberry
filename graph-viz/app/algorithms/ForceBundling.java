@@ -1,4 +1,4 @@
-package algorithm;
+package algorithms;
 
 import models.EdgeVector;
 import models.Path;
@@ -8,19 +8,19 @@ import java.util.ArrayList;
 
 public class ForceBundling {
 
-    ArrayList<Point> dataNodes;
-    ArrayList<EdgeVector> dataEdges;
-    ArrayList<Path> subdivisionPoints = new ArrayList<>();
-    ArrayList<ArrayList<Integer>> compatibilityList = new ArrayList<>();
-    final double K = 0.1;
-    double S_initial = 0.02;
-    final int P_initial = 1;
-    final int P_rate = 2;
-    final double C = 3;
-    final double I_initial = 50;
-    final double I_rate = 2.0 / 3.0;
-    final double compatibility_threshold = 0.6;
-    final double eps = 1e-6;
+    private ArrayList<Point> dataNodes;
+    private ArrayList<EdgeVector> dataEdges;
+    private ArrayList<Path> subdivisionPoints = new ArrayList<>();
+    private ArrayList<ArrayList<Integer>> compatibilityList = new ArrayList<>();
+    private final double K = 0.1;
+    private double S_initial = 0.02;
+    private final int P_initial = 1;
+    private final int P_rate = 2;
+    private final double C = 3;
+    private final double I_initial = 50;
+    private final double I_rate = 2.0 / 3.0;
+    private final double compatibility_threshold = 0.6;
+    private final double eps = 1e-6;
     private int isolatedEdgesCnt = 0;
 
     public ForceBundling(ArrayList<Point> dataNodes, ArrayList<EdgeVector> dataEdges) {
@@ -36,15 +36,15 @@ public class ForceBundling {
         S_initial = Math.max(0.025 - zoom * 0.0025, 0.001);
     }
 
-    double vectorDotProduct(Point p, Point q) {
+    private double vectorDotProduct(Point p, Point q) {
         return p.getX() * q.getX() + p.getY() * q.getY();
     }
 
-    Point edgeAsVector(EdgeVector e) {
+    private Point edgeAsVector(EdgeVector e) {
         return new Point(dataNodes.get(e.getTargetNodeInd()).getX() - dataNodes.get(e.getSourceNodeInd()).getX(), dataNodes.get(e.getTargetNodeInd()).getY() - dataNodes.get(e.getSourceNodeInd()).getY());
     }
 
-    double edgeLength(EdgeVector e) {
+    private double edgeLength(EdgeVector e) {
         if (Math.abs(dataNodes.get(e.getSourceNodeInd()).getX() - dataNodes.get(e.getTargetNodeInd()).getX()) < eps &&
                 Math.abs(dataNodes.get(e.getSourceNodeInd()).getY() - dataNodes.get(e.getTargetNodeInd()).getY()) < eps) {
             return eps;
@@ -54,21 +54,21 @@ public class ForceBundling {
     }
 
     // v1 for source, v2 for target
-    double customEdgeLength(Point v1, Point v2) {
+    private double customEdgeLength(Point v1, Point v2) {
         return Math.sqrt(Math.pow(v1.getX() - v2.getX(), 2) + Math.pow(v1.getY() - v2.getY(), 2));
     }
 
-    Point edgeMidPoint(EdgeVector e) {
+    private Point edgeMidPoint(EdgeVector e) {
         double midX = (dataNodes.get(e.getSourceNodeInd()).getX() + dataNodes.get(e.getTargetNodeInd()).getX()) / 2.0;
         double midY = (dataNodes.get(e.getSourceNodeInd()).getY() + dataNodes.get(e.getTargetNodeInd()).getY()) / 2.0;
         return new Point(midX, midY);
     }
 
-    double euclideanDistance(Point p, Point q) {
+    private double euclideanDistance(Point p, Point q) {
         return Math.sqrt(Math.pow(p.getX() - q.getX(), 2) + Math.pow(p.getY() - q.getY(), 2));
     }
 
-    double computeDividedEdgeLength(int e_ind) {
+    private double computeDividedEdgeLength(int e_ind) {
         double length = 0;
         for (int i = 1; i < subdivisionPoints.get(e_ind).getAlv().size(); i++) {
             double segmentLength = euclideanDistance(subdivisionPoints.get(e_ind).getAlv().get(i), subdivisionPoints.get(e_ind).getAlv().get(i - 1));
@@ -78,7 +78,7 @@ public class ForceBundling {
     }
 
     // q1 for source and q2 for target
-    Point projectPointOnLine(Point p, Point q1, Point q2) {
+    private Point projectPointOnLine(Point p, Point q1, Point q2) {
         double L = Math.sqrt(Math.pow(q2.getX() - q1.getX(), 2) + Math.pow(q2.getY() - q1.getY(), 2));
         double r = ((q1.getY() - p.getY()) * (q1.getY() - q2.getY()) - (q1.getX() - p.getX()) * (q2.getX() - q1.getX())) / (Math.pow(L, 2));
         double x = q1.getX() + r * (q2.getX() - q1.getX());
@@ -86,25 +86,19 @@ public class ForceBundling {
         return new Point(x, y);
     }
 
-    void initializeEdgeSubdivisions() {
+    private void initializeEdgeSubdivisions() {
         for (int i = 0; i < dataEdges.size(); i++) {
-            if (P_initial == 1) {
-                subdivisionPoints.add(new Path());
-            } else {
-                subdivisionPoints.add(new Path());
-                subdivisionPoints.get(i).getAlv().add(dataNodes.get(dataEdges.get(i).getSourceNodeInd()));
-                subdivisionPoints.get(i).getAlv().add(dataNodes.get(dataEdges.get(i).getTargetNodeInd()));
-            }
+            subdivisionPoints.add(new Path());
         }
     }
 
-    void initializeCompatibilityLists() {
+    private void initializeCompatibilityLists() {
         for (int i = 0; i < dataEdges.size(); i++) {
             compatibilityList.add(new ArrayList<>());
         }
     }
 
-    Point applySpringForce(int e_ind, int i, double kP) {
+    private Point applySpringForce(int e_ind, int i, double kP) {
         if (subdivisionPoints.get(e_ind).getAlv().size() <= 2) {
             return new Point(0, 0);
         }
@@ -118,7 +112,7 @@ public class ForceBundling {
         return new Point(x, y);
     }
 
-    Point applyElectrostaticForce(int e_ind, int i) {
+    private Point applyElectrostaticForce(int e_ind, int i) {
         Point sumOfForces = new Point(0, 0);
         ArrayList<Integer> compatibleEdgeList = compatibilityList.get(e_ind);
         for (int oe = 0; oe < compatibleEdgeList.size(); oe++) {
@@ -136,7 +130,7 @@ public class ForceBundling {
         return sumOfForces;
     }
 
-    ArrayList<Point> applyResultingForcesOnSubdivisionPoints(int e_ind, int P, double S) {
+    private ArrayList<Point> applyResultingForcesOnSubdivisionPoints(int e_ind, int P, double S) {
         double kP = K / (edgeLength(dataEdges.get(e_ind)) * (P + 1));
         ArrayList<Point> resultingForcesForSubdivisionPoints = new ArrayList<>();
         resultingForcesForSubdivisionPoints.add(new Point(0, 0));
@@ -152,7 +146,7 @@ public class ForceBundling {
         return resultingForcesForSubdivisionPoints;
     }
 
-    void updateEdgeDivisions(int P) {
+    private void updateEdgeDivisions(int P) {
         for (int e_ind = 0; e_ind < dataEdges.size(); e_ind++) {
             if (P == 1) {
                 subdivisionPoints.get(e_ind).getAlv().add(dataNodes.get(dataEdges.get(e_ind).getSourceNodeInd()));
@@ -184,16 +178,16 @@ public class ForceBundling {
         }
     }
 
-    double angleCompatibility(EdgeVector P, EdgeVector Q) {
+    private double angleCompatibility(EdgeVector P, EdgeVector Q) {
         return Math.abs(vectorDotProduct(edgeAsVector(P), edgeAsVector(Q)) / (edgeLength(P) * edgeLength(Q)));
     }
 
-    double scaleCompatibility(EdgeVector P, EdgeVector Q) {
+    private double scaleCompatibility(EdgeVector P, EdgeVector Q) {
         double lavg = (edgeLength(P) + edgeLength(Q)) / 2.0;
         return 2.0 / (lavg / Math.min(edgeLength(P), edgeLength(Q)) + Math.max(edgeLength(P), edgeLength(Q)) / lavg);
     }
 
-    double positionCompatibility(EdgeVector P, EdgeVector Q) {
+    private double positionCompatibility(EdgeVector P, EdgeVector Q) {
         double lavg = (edgeLength(P) + edgeLength(Q)) / 2.0;
         Point midP = new Point(
                 (dataNodes.get(P.getSourceNodeInd()).getX() + dataNodes.get(P.getTargetNodeInd()).getX()) / 2.0,
@@ -206,7 +200,7 @@ public class ForceBundling {
         return lavg / (lavg + euclideanDistance(midP, midQ));
     }
 
-    double edgeVisibility(EdgeVector P, EdgeVector Q) {
+    private double edgeVisibility(EdgeVector P, EdgeVector Q) {
         Point I0 = projectPointOnLine(dataNodes.get(Q.getSourceNodeInd()), dataNodes.get(P.getSourceNodeInd()), dataNodes.get(P.getTargetNodeInd()));
         Point I1 = projectPointOnLine(dataNodes.get(Q.getTargetNodeInd()), dataNodes.get(P.getSourceNodeInd()), dataNodes.get(P.getTargetNodeInd()));
         Point midI = new Point(
@@ -220,19 +214,19 @@ public class ForceBundling {
         return Math.max(0, 1 - 2 * euclideanDistance(midP, midI) / euclideanDistance(I0, I1));
     }
 
-    double visibilityCompatibility(EdgeVector P, EdgeVector Q) {
+    private double visibilityCompatibility(EdgeVector P, EdgeVector Q) {
         return Math.min(edgeVisibility(P, Q), edgeVisibility(Q, P));
     }
 
-    double compatibilityScore(EdgeVector P, EdgeVector Q) {
+    private double compatibilityScore(EdgeVector P, EdgeVector Q) {
         return (angleCompatibility(P, Q) * scaleCompatibility(P, Q) * positionCompatibility(P, Q) * visibilityCompatibility(P, Q));
     }
 
-    boolean areCompatible(EdgeVector P, EdgeVector Q) {
+    private boolean areCompatible(EdgeVector P, EdgeVector Q) {
         return (compatibilityScore(P, Q) > compatibility_threshold);
     }
 
-    void computeCompatibilityLists() {
+    private void computeCompatibilityLists() {
         for (int e = 0; e < dataEdges.size() - 1; e++) {
             for (int oe = e + 1; oe < dataEdges.size(); oe++) {
                 if (areCompatible(dataEdges.get(e), dataEdges.get(oe))) {

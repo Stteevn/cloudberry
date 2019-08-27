@@ -350,7 +350,7 @@
                     removeLayer();
                     query = document.getElementById("keyword-textbox").value;
 
-                    socket = new WebSocket("ws://cloudberry05.ics.uci.edu:2335/replies");
+                    socket = new WebSocket("ws://localhost:9000/replies");
 
                     socket.onopen = function (e) {
                         current_timestamp = Date.now();
