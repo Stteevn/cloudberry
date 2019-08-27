@@ -5,20 +5,43 @@ import akka.actor.ActorRef;
 import akka.actor.Props;
 import controllers.GraphController;
 
+/**
+ * This class works as the actor of the WebSocket.
+ * For each WebSocket connection, there will be one actor object.
+ */
 public class BundleActor extends AbstractActor {
 
+    /**
+     * For each actor, there will be one GraphController object.
+     */
     private GraphController graphController = new GraphController();
 
-    public static Props props(ActorRef out) {
-        return Props.create(BundleActor.class, () ->new BundleActor(out));
-    }
-
+    /**
+     * Immutable and Serializable handler to an actor.
+     */
     private final ActorRef out;
 
-    public BundleActor(ActorRef out) {
+    /**
+     * Construct bundle actor with handler.
+     * @param out The corresponding handler.
+     * @return the configuration object using in creating an actor.
+     */
+    public static Props props(ActorRef out) {
+        return Props.create(BundleActor.class, () -> new BundleActor(out));
+    }
+
+    /**
+     * Constructor for bundle actor.
+     * @param out The corresponding handler.
+     */
+    private BundleActor(ActorRef out) {
         this.out = out;
     }
 
+    /**
+     * Handler method dealing with received requests.
+     * @return the specialized "receive" behavior.
+     */
     @Override
     public Receive createReceive() {
         return receiveBuilder()
@@ -26,6 +49,10 @@ public class BundleActor extends AbstractActor {
                 .build();
     }
 
+    /**
+     * Returns the response data by WebSocket.
+     * @param s data string to be returned
+     */
     public void returnData(String s) {
         out.tell(s, self());
     }

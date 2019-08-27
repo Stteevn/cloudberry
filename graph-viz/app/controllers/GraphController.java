@@ -1,9 +1,6 @@
 package controllers;
 
-import algorithm.ForceBundling;
-import algorithm.IKmeans;
-import algorithm.Kmeans;
-import algorithm.PointCluster;
+import algorithm.*;
 import utils.DatabaseUtils;
 import utils.PropertiesUtil;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -27,36 +24,48 @@ import java.util.*;
 
 public class GraphController extends Controller {
 
+    // hierarchical structure for HGC algorithm
     private PointCluster pointCluster = new PointCluster(0, 17);
+    //
     private IKmeans iKmeans;
+    //
     private Kmeans kmeans;
-    // configuration properties
+    // Configuration properties
     private Properties configProps;
+    // Incremental edge data
     private Set<Edge> edgeSet = new HashSet<>();
-    // indicates the sending process is completed
+    // Indicates the sending process is completed
     private final String finished = "Y";
-    // indicates the sending process is not completed
+    // Indicates the sending process is not completed
     private final String unfinished = "N";
 
     /**
-     * An action that renders an HTML page with a welcome message. The configuration
-     * in the <code>routes</code> file means that this method will be called when
-     * the application receives a <code>GET</code> request with a path of
-     * <code>/</code>.
+     * Dispatcher for the request message.
+     *
+     * @param query       received query message
+     * @param bundleActor WebSocket actor to return response.
      */
-
     public void dispatcher(String query, BundleActor bundleActor) {
+        // Heartbeat package handler
+        // WebSocket will automatically close after several seconds
+        // To keep the state, maintain WebSocket connection is a must
         if (query.equals("")) {
-//            System.out.println("Heartbeat detected.");
             return;
         }
+        // Parse the request message with JSON structure
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode jsonNode;
+        // Option indicates the request type
+        // 1: incremental data query
+        // 2: point and cluster
+        // 3: edge and bundled edge and tree cut
+        // others: invalid
         int option = -1;
         try {
             jsonNode = objectMapper.readTree(query);
             option = Integer.parseInt(jsonNode.get("option").asText());
         } catch (IOException e) {
+            System.err.println("Invalid Request received.");
             e.printStackTrace();
         }
         switch (option) {
@@ -93,8 +102,8 @@ public class GraphController extends Controller {
             endDate = jsonNode.get("date").asText();
         }
         String json = "";
-        ObjectNode objectNode = objectMapper.createObjectNode();
         try {
+            ObjectNode objectNode = objectMapper.createObjectNode();
             Edge.set_epsilon(9);
             objectNode = queryResult(query, endDate, clusteringAlgo, timestamp, objectNode);
             objectNode.put("option", 0);
@@ -384,7 +393,7 @@ public class GraphController extends Controller {
         int zoom = Integer.parseInt(jsonNode.get("zoom").asText());
         int bundling = Integer.parseInt(jsonNode.get("bundling").asText());
         int clustering = Integer.parseInt(jsonNode.get("clustering").asText());
-        int treeCut = Integer.parseInt(jsonNode.get("treeCut").asText());
+        int treeCutting = Integer.parseInt(jsonNode.get("treeCut").asText());
         objectMapper = new ObjectMapper();
         ObjectNode objectNode = objectMapper.createObjectNode();
         ArrayNode arrayNode = objectMapper.createArrayNode();
@@ -437,85 +446,11 @@ public class GraphController extends Controller {
                             externalEdgeSet.add(edge);
                         }
                     }
-                    if(treeCut == 1) {
-                        HashMap<Cluster, Cluster> externalClusterMap = new HashMap<>();
-                        HashMap<Cluster, ArrayList<Cluster>> externalHierarchy = new HashMap<>();
-                        HashSet<Cluster> internalHierarchy = new HashSet<>();
-                        addClusterHierarchy(externalCluster, externalHierarchy, externalClusterMap);
-                        addClusterHierarchy(internalCluster, internalHierarchy);
-                        while (true) {
-                            ArrayList<Cluster> removeKeyList = new ArrayList<>();
-                            // Find clusters has common ancestor with internal clusters at this level
-                            for (Map.Entry<Cluster, ArrayList<Cluster>> entry : externalHierarchy.entrySet()) {
-                                Cluster key = entry.getKey();
-                                if (internalHierarchy.contains(key)) {
-                                    int level = entry.getKey().getZoom();
-                                    // use a level lower because of conflict
-                                    int diff = entry.getValue().get(0).getZoom() - level - 1;
-                                    Cluster cPar;
-                                    for (Cluster c : entry.getValue()) {
-                                        cPar = c;
-                                        for (int i = 0; i < diff; i++) {
-                                            cPar = cPar.parent;
-                                        }
-                                        externalClusterMap.put(c, cPar);
-                                    }
-                                    removeKeyList.add(key);
-                                }
-                            }
-                            // remove all clusters stop at this level
-                            for (Cluster c : removeKeyList) {
-                                externalHierarchy.remove(c);
-                            }
-                            if (externalHierarchy.size() == 0) {
-                                break;
-                            }
-                            // elevate all remaining clusters to a higher level
-                            externalHierarchy = elevateHierarchy(externalHierarchy, externalClusterMap);
-                            internalHierarchy = elevateHierarchy(internalHierarchy);
-                        }
-                        for (Edge edge : externalEdgeSet) {
-                            Cluster fromCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getFromLongitude()), PointCluster.latY(edge.getFromLatitude())), zoom);
-                            Cluster toCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getToLongitude()), PointCluster.latY(edge.getToLatitude())), zoom);
-                            double fromLongitude = PointCluster.xLng(fromCluster.x());
-                            double fromLatitude = PointCluster.yLat(fromCluster.y());
-                            double insideLat, insideLng, outsideLat, outsideLng;
-                            if (lowerLongitude <= fromLongitude && fromLongitude <= upperLongitude
-                                    && lowerLatitude <= fromLatitude && fromLatitude <= upperLatitude) {
-                                insideLng = fromLongitude;
-                                insideLat = fromLatitude;
-                                Cluster elevatedCluster = externalClusterMap.get(toCluster);
-                                outsideLng = PointCluster.xLng(elevatedCluster.x());
-                                outsideLat = PointCluster.yLat(elevatedCluster.y());
-                            } else {
-                                insideLng = PointCluster.xLng(toCluster.x());
-                                insideLat = PointCluster.yLat(toCluster.y());
-                                Cluster elevatedCluster = externalClusterMap.get(fromCluster);
-                                outsideLng = PointCluster.xLng(elevatedCluster.x());
-                                outsideLat = PointCluster.yLat(elevatedCluster.y());
-                            }
-                            Edge e = new Edge(insideLat, insideLng, outsideLat, outsideLng);
-                            if (edges.containsKey(e)) {
-                                edges.put(e, edges.get(e) + 1);
-                            } else {
-                                edges.put(e, 1);
-                            }
-                        }
+                    if (treeCutting == 1) {
+                        TreeCut treeCutInstance = new TreeCut();
+                        treeCutInstance.treeCut(pointCluster, lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, zoom, edges, externalEdgeSet, externalCluster, internalCluster);
                     } else {
-                        for (Edge edge : externalEdgeSet) {
-                            Cluster fromCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getFromLongitude()), PointCluster.latY(edge.getFromLatitude())), zoom);
-                            Cluster toCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getToLongitude()), PointCluster.latY(edge.getToLatitude())), zoom);
-                            double fromLongitude = PointCluster.xLng(fromCluster.x());
-                            double fromLatitude = PointCluster.yLat(fromCluster.y());
-                            double toLongitude = PointCluster.xLng(toCluster.x());
-                            double toLatitude = PointCluster.yLat(toCluster.y());
-                            Edge e = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
-                            if (edges.containsKey(e)) {
-                                edges.put(e, edges.get(e) + 1);
-                            } else {
-                                edges.put(e, 1);
-                            }
-                        }
+                        nonTreeCut(zoom, edges, externalEdgeSet);
                     }
 
                 }
@@ -536,6 +471,23 @@ public class GraphController extends Controller {
         objectNode.put("option", 2);
         objectNode.put("timestamp", timestamp);
         bundleActor.returnData(objectNode.toString());
+    }
+
+    private void nonTreeCut(int zoom, HashMap<Edge, Integer> edges, HashSet<Edge> externalEdgeSet) {
+        for (Edge edge : externalEdgeSet) {
+            Cluster fromCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getFromLongitude()), PointCluster.latY(edge.getFromLatitude())), zoom);
+            Cluster toCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getToLongitude()), PointCluster.latY(edge.getToLatitude())), zoom);
+            double fromLongitude = PointCluster.xLng(fromCluster.x());
+            double fromLatitude = PointCluster.yLat(fromCluster.y());
+            double toLongitude = PointCluster.xLng(toCluster.x());
+            double toLatitude = PointCluster.yLat(toCluster.y());
+            Edge e = new Edge(fromLatitude, fromLongitude, toLatitude, toLongitude);
+            if (edges.containsKey(e)) {
+                edges.put(e, edges.get(e) + 1);
+            } else {
+                edges.put(e, 1);
+            }
+        }
     }
 
     private void getKmeansEdges(ObjectMapper objectMapper, int zoom, int bundling, int clustering, ObjectNode objectNode, ArrayNode arrayNode, boolean b, HashMap<models.Point, Integer> parents, ArrayList<double[]> center) {
@@ -643,66 +595,6 @@ public class GraphController extends Controller {
         return objectNode;
     }
 
-    private HashSet<Cluster> elevateHierarchy(HashSet<Cluster> internalHierarchy) {
-        HashSet<Cluster> tempInternalHierarchy = new HashSet<>();
-        for (Cluster c : internalHierarchy) {
-            if (c.parent != null) {
-                tempInternalHierarchy.add(c.parent);
-            }
-        }
-        return tempInternalHierarchy;
-    }
-
-    private HashMap<Cluster, ArrayList<Cluster>> elevateHierarchy(HashMap<Cluster, ArrayList<Cluster>> externalHierarchy, HashMap<Cluster, Cluster> externalClusterMap) {
-        HashMap<Cluster, ArrayList<Cluster>> tempExternalHierarchy = new HashMap<>();
-        for (Map.Entry<Cluster, ArrayList<Cluster>> entry : externalHierarchy.entrySet()) {
-            Cluster key = entry.getKey();
-            if (key.parent != null) {
-                if (!tempExternalHierarchy.containsKey(key.parent)) {
-                    tempExternalHierarchy.put(key.parent, new ArrayList<>());
-                }
-                tempExternalHierarchy.get(key.parent).addAll(entry.getValue());
-            }
-            // has arrived highest level
-            else {
-                // use level 1 to make the elevation
-                int diff = entry.getValue().get(0).getZoom() - 1;
-                for (Cluster c : entry.getValue()) {
-                    Cluster cPar = c;
-                    for (int i = 0; i < diff; i++) {
-                        cPar = cPar.parent;
-                    }
-                    externalClusterMap.put(c, cPar);
-                }
-            }
-        }
-        return tempExternalHierarchy;
-    }
-
-    private void addClusterHierarchy(HashSet<Cluster> externalCluster, HashSet<Cluster> internalHierarchy) {
-        for (Cluster c : externalCluster) {
-            if (c.parent != null) {
-                internalHierarchy.add(c.parent);
-            }
-        }
-    }
-
-    private void addClusterHierarchy(HashSet<Cluster> externalCluster, HashMap<Cluster, ArrayList<Cluster>> externalHierarchy, HashMap<Cluster, Cluster> externalClusterMap) {
-        for (Cluster c : externalCluster) {
-            if (c.parent != null) {
-                if (!externalHierarchy.containsKey(c.parent)) {
-                    externalHierarchy.put(c.parent, new ArrayList<>());
-                }
-                externalHierarchy.get(c.parent).add(c);
-            }
-            // has arrived highest level
-            else {
-                // use level 1 to make the elevation
-                externalClusterMap.put(c, c);
-            }
-        }
-
-    }
 
     private double sqDistance(double x1, double y1, double x2, double y2) {
         return Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2);
