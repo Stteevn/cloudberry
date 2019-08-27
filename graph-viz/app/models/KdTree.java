@@ -51,19 +51,37 @@ public class KdTree {
     private Node root;
     private int size;
 
+    /**
+     * return an instance of kd tree
+     */
     public KdTree() {
         root = null;
         size = 0;
     }
 
+    /**
+     * check if the tree is empty
+     *
+     * @return if the tree is empty
+     */
     public boolean isEmpty() {
         return root == null;
     }
 
+    /**
+     * get the number of points in the tree
+     *
+     * @return the number of points
+     */
     public int size() {
         return size;
     }
 
+    /**
+     * Insert a cluster into kd tree
+     *
+     * @param p cluster
+     */
     public void insert(Cluster p) {
         // base case: empty tree
         if (size == 0) {
@@ -79,10 +97,6 @@ public class KdTree {
         Comparator<Cluster> comparator;
 
         while (n != null) {
-            // return if point is already in the tree
-//            if (n.getPoint().equals(p)) {
-//                return;
-//            }
             // if we are at a vertical node
             if (n.vertical()) {
                 comparator = Cluster.X_ORDER;
@@ -132,6 +146,12 @@ public class KdTree {
         }
     }
 
+    /**
+     * find if tree contains this cluster
+     *
+     * @param p cluster
+     * @return if tree contains this custer
+     */
     public boolean contains(Cluster p) {
         return containsRecursive(root, p);
     }
@@ -160,6 +180,12 @@ public class KdTree {
         }
     }
 
+    /**
+     * find the cluster in tree
+     *
+     * @param point cluster
+     * @return the cluster in tree
+     */
     public Cluster findPoint(Cluster point) {
         return findPointRecursive(root, point);
     }
@@ -186,6 +212,12 @@ public class KdTree {
         }
     }
 
+    /**
+     * find all the cluster in certain rectangle
+     *
+     * @param rect rectangle
+     * @return array of cluster
+     */
     public ArrayList<Cluster> range(Rectangle rect) {
         ArrayList<Cluster> pointsInRange = new ArrayList<>();
         rangeRecursive(pointsInRange, rect, root);
@@ -215,6 +247,14 @@ public class KdTree {
             rangeRecursive(rangeList, rect, n.getRight());
     }
 
+    /**
+     * find all the cluster in certain circle
+     *
+     * @param x x coordinate of center of circle
+     * @param y y coordinate of center of circle
+     * @param r radius of circle
+     * @return array of cluster
+     */
     public ArrayList<Cluster> rangeRadius(double x, double y, double r) {
         ArrayList<Cluster> pointsInRange = new ArrayList<>();
         rangeRadiusRecursive(pointsInRange, x, y, r, root);
