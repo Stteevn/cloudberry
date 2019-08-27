@@ -278,6 +278,7 @@ public class GraphController extends Controller {
         String json = "";
         int pointsCnt = 0;
         int clustersCnt = 0;
+        int repliesCnt = edgeSet.size();
         if (clusteringAlgo == 0) {
             if (pointCluster != null) {
                 objectMapper = new ObjectMapper();
@@ -362,6 +363,7 @@ public class GraphController extends Controller {
         objectNode.put("option", 1);
         objectNode.put("data", json);
         objectNode.put("timestamp", timestamp);
+        objectNode.put("repliesCnt", repliesCnt);
         objectNode.put("pointsCnt", pointsCnt);
         objectNode.put("clustersCnt", clustersCnt);
         bundleActor.returnData(objectNode.toString());

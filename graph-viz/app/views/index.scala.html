@@ -400,6 +400,7 @@
                                 renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
                             }
                         } else if (option === 1) {
+                            document.getElementById('repliesCnt').innerHTML = "Reply Tweets Count: " + json['repliesCnt'] + " / 15722639";
                             document.getElementById('pointsCnt').innerHTML = "Points Count: " + json['pointsCnt'];
                             document.getElementById('clustersCnt').innerHTML = "Clusters Count: " + json['clustersCnt'];
                             data = JSON.parse(json['data']);
