@@ -30,7 +30,6 @@ public class Cluster implements Comparable<Cluster> {
         this.zoom = zoom;
     }
 
-
     public int getNumPoints() {
         return numPoints;
     }

@@ -12,8 +12,14 @@ public class PointCluster {
     private int maxZoom;
     private double radius = 80;
     private double extent = 512;
-    public KdTree[] trees;
+    private KdTree[] trees;
 
+    /**
+     * Create an instance of hierarchical greedy clustering
+     *
+     * @param minZoom the minimum zoom level
+     * @param maxZoom the maximum zoom level
+     */
     public PointCluster(int minZoom, int maxZoom) {
         this.minZoom = minZoom;
         this.maxZoom = maxZoom;
@@ -23,16 +29,30 @@ public class PointCluster {
         }
     }
 
+    /**
+     * @return the maximum zoom level
+     */
     public int getMaxZoom() {
         return maxZoom;
     }
 
+
+    /**
+     * Load all the points and run clustering algorithm
+     *
+     * @param points input of points
+     */
     public void load(ArrayList<Cluster> points) {
         for (Cluster point : points) {
             insert(new Cluster(lngX(point.x()), latY(point.y()), null, 1));
         }
     }
 
+    /**
+     * insert one point into the tree
+     *
+     * @param point the input of point
+     */
     public void insert(Cluster point) {
         trees[maxZoom + 1].insert(point);
         for (int z = maxZoom; z >= minZoom; z--) {
@@ -77,10 +97,21 @@ public class PointCluster {
         }
     }
 
+    /**
+     * @param zoom the zoom level
+     * @return the radius in this zoom level
+     */
     private double getZoomRadius(int zoom) {
         return radius / (extent * Math.pow(2, zoom));
     }
 
+    /**
+     * get clusters within certain window and zoom level
+     *
+     * @param bbox the bounding box of the window
+     * @param zoom the zoom level
+     * @return all the clusters within this bounding box and this zoom level
+     */
     public ArrayList<Cluster> getClusters(double[] bbox, int zoom) {
         double minLongitude = ((bbox[0] + 180) % 360 + 360) % 360 - 180;
         double minLatitude = Math.max(-90, Math.min(90, bbox[1]));
@@ -112,7 +143,13 @@ public class PointCluster {
         return Math.max(minZoom, Math.min(z, maxZoom + 1));
     }
 
-
+    /**
+     * get the parent cluster in certain zoom level
+     *
+     * @param cluster the input cluster
+     * @param zoom    the zoom level of its parent
+     * @return the parent cluster of this cluster
+     */
     public Cluster parentCluster(Cluster cluster, int zoom) {
         Cluster c = trees[maxZoom + 1].findPoint(cluster);
         while (c != null) {
@@ -124,22 +161,45 @@ public class PointCluster {
         return c;
     }
 
-    // longitude/latitude to spherical mercator in [0..1] range
+    /**
+     * translate longitude to spherical mercator in [0..1] range
+     *
+     * @param lng longitude
+     * @return a number in [0..1] range
+     */
     public static double lngX(double lng) {
         return lng / 360 + 0.5;
     }
 
+    /**
+     * translate latitude to spherical mercator in [0..1] range
+     *
+     * @param lat latitude
+     * @return a number in [0..1] range
+     */
     public static double latY(double lat) {
         double sin = Math.sin(lat * Math.PI / 180);
         double y = (0.5 - 0.25 * Math.log((1 + sin) / (1 - sin)) / Math.PI);
         return y < 0 ? 0 : y > 1 ? 1 : y;
     }
 
-    // spherical mercator to longitude/latitude
+    /**
+     * translate spherical mercator in [0..1] range to longitude
+     *
+     * @param x a number in [0..1] range
+     * @return longitude
+     */
     public static double xLng(double x) {
         return (x - 0.5) * 360;
     }
 
+
+    /**
+     * translate spherical mercator in [0..1] range to latitude
+     *
+     * @param y a number in [0..1] range
+     * @return latitude
+     */
     public static double yLat(double y) {
         double y2 = (180 - y * 360) * Math.PI / 180;
         return 360 * Math.atan(Math.exp(y2)) / Math.PI - 90;
