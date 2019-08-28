@@ -6,23 +6,46 @@ import models.Point;
 
 import java.util.ArrayList;
 
+/**
+ * Force Directed Edge Bundling Algorithm.
+ */
 public class ForceBundling {
 
+    // All the data nodes
     private ArrayList<Point> dataNodes;
+    // All the data edges
     private ArrayList<EdgeVector> dataEdges;
+    // Turning points of the generated paths
     private ArrayList<Path> subdivisionPoints = new ArrayList<>();
+    // Compatible edge indexes for each edge
     private ArrayList<ArrayList<Integer>> compatibilityList = new ArrayList<>();
+    // Algorithm parameters
+    // K: global bundling constant controlling edge stiffness
     private final double K = 0.1;
+    // S: init. distance to move points
     private double S_initial = 0.02;
+    // P_initial: init. subdivision number
     private final int P_initial = 1;
+    // P_rate: subdivision rate increase
     private final int P_rate = 2;
+    // C: number of cycles to perform
     private final double C = 3;
+    // I_initial: init. number of iterations for cycle
     private final double I_initial = 50;
+    // I_rate: rate at which iteration number decreases i.e. 2/3
     private final double I_rate = 2.0 / 3.0;
+    // compatibility_threshold: the threshold score of deciding compatibility
     private final double compatibility_threshold = 0.6;
+    // epsilon: decide the precision
     private final double eps = 1e-6;
+    // isolatedEdgesCnt: unbundled edge count
     private int isolatedEdgesCnt = 0;
 
+    /**
+     * Constructor of fdeb algorithm.
+     * @param dataNodes incoming data nodes.
+     * @param dataEdges incoming data edges.
+     */
     public ForceBundling(ArrayList<Point> dataNodes, ArrayList<EdgeVector> dataEdges) {
         this.dataNodes = dataNodes;
         this.dataEdges = dataEdges;
@@ -32,6 +55,10 @@ public class ForceBundling {
         return isolatedEdgesCnt;
     }
 
+    /**
+     * Sets different moving distance to each zoom level.
+     * @param zoom current zoom level.
+     */
     public void setS(int zoom) {
         S_initial = Math.max(0.025 - zoom * 0.0025, 0.001);
     }
@@ -40,6 +67,11 @@ public class ForceBundling {
         return p.getX() * q.getX() + p.getY() * q.getY();
     }
 
+    /**
+     * Calculates the vector format of edge.
+     * @param e current edge.
+     * @return corresponding vector.
+     */
     private Point edgeAsVector(EdgeVector e) {
         return new Point(dataNodes.get(e.getTargetNodeInd()).getX() - dataNodes.get(e.getSourceNodeInd()).getX(), dataNodes.get(e.getTargetNodeInd()).getY() - dataNodes.get(e.getSourceNodeInd()).getY());
     }
@@ -53,21 +85,36 @@ public class ForceBundling {
                 Math.pow(dataNodes.get(e.getSourceNodeInd()).getY() - dataNodes.get(e.getTargetNodeInd()).getY(), 2));
     }
 
-    // v1 for source, v2 for target
-    private double customEdgeLength(Point v1, Point v2) {
-        return Math.sqrt(Math.pow(v1.getX() - v2.getX(), 2) + Math.pow(v1.getY() - v2.getY(), 2));
-    }
 
+
+    /**
+     * Calculates the middle point of one edge.
+     * @param e current edge.
+     * @return corresponding middle point.
+     */
     private Point edgeMidPoint(EdgeVector e) {
         double midX = (dataNodes.get(e.getSourceNodeInd()).getX() + dataNodes.get(e.getTargetNodeInd()).getX()) / 2.0;
         double midY = (dataNodes.get(e.getSourceNodeInd()).getY() + dataNodes.get(e.getTargetNodeInd()).getY()) / 2.0;
         return new Point(midX, midY);
     }
 
+    /**
+     * Calculates distance between two points,
+     * the distance of two edges is given by the distance
+     * between the middle points of these two edges.
+     * @param p source node.
+     * @param q target node.
+     * @return distance of two points.
+     */
     private double euclideanDistance(Point p, Point q) {
         return Math.sqrt(Math.pow(p.getX() - q.getX(), 2) + Math.pow(p.getY() - q.getY(), 2));
     }
 
+    /**
+     * Calculates edge length after applying division.
+     * @param e_ind the index of the edge.
+     * @return edge length.
+     */
     private double computeDividedEdgeLength(int e_ind) {
         double length = 0;
         for (int i = 1; i < subdivisionPoints.get(e_ind).getAlv().size(); i++) {
@@ -77,7 +124,13 @@ public class ForceBundling {
         return length;
     }
 
-    // q1 for source and q2 for target
+    /**
+     * Project a point onto an edge.
+     * @param p point to be projected.
+     * @param q1 edge source.
+     * @param q2 edge target.
+     * @return Projected vector origins from edge source node.
+     */
     private Point projectPointOnLine(Point p, Point q1, Point q2) {
         double L = Math.sqrt(Math.pow(q2.getX() - q1.getX(), 2) + Math.pow(q2.getY() - q1.getY(), 2));
         double r = ((q1.getY() - p.getY()) * (q1.getY() - q2.getY()) - (q1.getX() - p.getX()) * (q2.getX() - q1.getX())) / (Math.pow(L, 2));
@@ -86,18 +139,31 @@ public class ForceBundling {
         return new Point(x, y);
     }
 
+    /**
+     * Initialize the generated paths.
+     */
     private void initializeEdgeSubdivisions() {
         for (int i = 0; i < dataEdges.size(); i++) {
             subdivisionPoints.add(new Path());
         }
     }
 
+    /**
+     * Initialize the compatibility lists.
+     */
     private void initializeCompatibilityLists() {
         for (int i = 0; i < dataEdges.size(); i++) {
             compatibilityList.add(new ArrayList<>());
         }
     }
 
+    /**
+     * Apply the spring force within nodes in the same edge.
+     * @param e_ind the index of the edge.
+     * @param i the index of the node within the edge.
+     * @param kP parameter for calculation.
+     * @return force vector.
+     */
     private Point applySpringForce(int e_ind, int i, double kP) {
         if (subdivisionPoints.get(e_ind).getAlv().size() <= 2) {
             return new Point(0, 0);
@@ -112,6 +178,12 @@ public class ForceBundling {
         return new Point(x, y);
     }
 
+    /**
+     * Apply the electrostatic force between edges.
+     * @param e_ind the index of the edge
+     * @param i the index of the node within the edge.
+     * @return force vector
+     */
     private Point applyElectrostaticForce(int e_ind, int i) {
         Point sumOfForces = new Point(0, 0);
         ArrayList<Integer> compatibleEdgeList = compatibilityList.get(e_ind);
@@ -122,7 +194,7 @@ public class ForceBundling {
             if ((Math.abs(force.getX()) > eps || Math.abs(force.getY()) > eps)) {
                 Point source = subdivisionPoints.get(compatibleEdgeList.get(oe)).getAlv().get(i);
                 Point target = subdivisionPoints.get(e_ind).getAlv().get(i);
-                double diff = customEdgeLength(source, target);
+                double diff = euclideanDistance(source, target);
                 sumOfForces.setX(sumOfForces.getX() + force.getX() / diff);
                 sumOfForces.setY(sumOfForces.getY() + force.getY() / diff);
             }
@@ -130,6 +202,13 @@ public class ForceBundling {
         return sumOfForces;
     }
 
+    /**
+     * Calculates the net force.
+     * @param e_ind the index of the edge.
+     * @param P the subdivision number.
+     * @param S the moving distance.
+     * @return net forces
+     */
     private ArrayList<Point> applyResultingForcesOnSubdivisionPoints(int e_ind, int P, double S) {
         double kP = K / (edgeLength(dataEdges.get(e_ind)) * (P + 1));
         ArrayList<Point> resultingForcesForSubdivisionPoints = new ArrayList<>();
@@ -146,6 +225,10 @@ public class ForceBundling {
         return resultingForcesForSubdivisionPoints;
     }
 
+    /**
+     * Update the path points by applying net forces
+     * @param P the subdivision number
+     */
     private void updateEdgeDivisions(int P) {
         for (int e_ind = 0; e_ind < dataEdges.size(); e_ind++) {
             if (P == 1) {
@@ -178,15 +261,33 @@ public class ForceBundling {
         }
     }
 
+    /**
+     * Metric to measure the angle compatibility.
+     * @param P the first edge
+     * @param Q the second edge
+     * @return score of compatibility
+     */
     private double angleCompatibility(EdgeVector P, EdgeVector Q) {
         return Math.abs(vectorDotProduct(edgeAsVector(P), edgeAsVector(Q)) / (edgeLength(P) * edgeLength(Q)));
     }
 
+    /**
+     * Metric to measure the scale compatibility.
+     * @param P the first edge
+     * @param Q the second edge
+     * @return score of compatibility
+     */
     private double scaleCompatibility(EdgeVector P, EdgeVector Q) {
         double lavg = (edgeLength(P) + edgeLength(Q)) / 2.0;
         return 2.0 / (lavg / Math.min(edgeLength(P), edgeLength(Q)) + Math.max(edgeLength(P), edgeLength(Q)) / lavg);
     }
 
+    /**
+     * Metric to measure the position compatibility.
+     * @param P the first edge
+     * @param Q the second edge
+     * @return score of compatibility
+     */
     private double positionCompatibility(EdgeVector P, EdgeVector Q) {
         double lavg = (edgeLength(P) + edgeLength(Q)) / 2.0;
         Point midP = new Point(
@@ -200,6 +301,12 @@ public class ForceBundling {
         return lavg / (lavg + euclideanDistance(midP, midQ));
     }
 
+    /**
+     * Metric to measure the visibility compatibility. (intersection part)
+     * @param P the first edge
+     * @param Q the second edge
+     * @return score of compatibility
+     */
     private double edgeVisibility(EdgeVector P, EdgeVector Q) {
         Point I0 = projectPointOnLine(dataNodes.get(Q.getSourceNodeInd()), dataNodes.get(P.getSourceNodeInd()), dataNodes.get(P.getTargetNodeInd()));
         Point I1 = projectPointOnLine(dataNodes.get(Q.getTargetNodeInd()), dataNodes.get(P.getSourceNodeInd()), dataNodes.get(P.getTargetNodeInd()));
@@ -214,18 +321,39 @@ public class ForceBundling {
         return Math.max(0, 1 - 2 * euclideanDistance(midP, midI) / euclideanDistance(I0, I1));
     }
 
+    /**
+     * Metric to measure the visibility compatibility.
+     * @param P the first edge
+     * @param Q the second edge
+     * @return score of compatibility
+     */
     private double visibilityCompatibility(EdgeVector P, EdgeVector Q) {
         return Math.min(edgeVisibility(P, Q), edgeVisibility(Q, P));
     }
 
+    /**
+     * Calculates the compatibility score.
+     * @param P the first edge
+     * @param Q the second edge
+     * @return score of compatibility
+     */
     private double compatibilityScore(EdgeVector P, EdgeVector Q) {
         return (angleCompatibility(P, Q) * scaleCompatibility(P, Q) * positionCompatibility(P, Q) * visibilityCompatibility(P, Q));
     }
 
+    /**
+     * Returns the compatible judgement.
+     * @param P the first edge
+     * @param Q the second edge
+     * @return compatible result
+     */
     private boolean areCompatible(EdgeVector P, EdgeVector Q) {
         return (compatibilityScore(P, Q) > compatibility_threshold);
     }
 
+    /**
+     * Calculates the compatibility lists.
+     */
     private void computeCompatibilityLists() {
         for (int e = 0; e < dataEdges.size() - 1; e++) {
             for (int oe = e + 1; oe < dataEdges.size(); oe++) {
@@ -240,6 +368,10 @@ public class ForceBundling {
         }
     }
 
+    /**
+     * Runs the edge bundle
+     * @return bundling results (path)
+     */
     public ArrayList<Path> forceBundle() {
         double S = S_initial;
         double I = I_initial;

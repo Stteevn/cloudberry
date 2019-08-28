@@ -33,14 +33,16 @@ public class GraphController extends Controller {
     private Kmeans kmeans;
     // Incremental edge data
     private Set<Edge> edgeSet = new HashSet<>();
+    private BundleActor bundleActor;
 
     /**
      * Dispatcher for the request message.
      *
      * @param query       received query message
-     * @param bundleActor WebSocket actor to return response.
+     * @param actor WebSocket actor to return response.
      */
-    public void dispatcher(String query, BundleActor bundleActor) {
+    public void dispatcher(String query, BundleActor actor) {
+        bundleActor = actor;
         // Heartbeat package handler
         // WebSocket will automatically close after several seconds
         // To keep the state, maintain WebSocket connection is a must
@@ -65,13 +67,13 @@ public class GraphController extends Controller {
         }
         switch (option) {
             case 0:
-                new IncrementalQuery().prepareIncremental(this, query, bundleActor);
+                new IncrementalQuery().prepareIncremental(this, query);
                 break;
             case 1:
-                cluster(query, bundleActor);
+                cluster(query);
                 break;
             case 2:
-                edgeCluster(query, bundleActor);
+                edgeCluster(query);
                 break;
             default:
                 System.err.println("Internal error: no option included");
@@ -79,11 +81,23 @@ public class GraphController extends Controller {
         }
     }
 
-    public void doIncrementalQuery(String query, int clusteringAlgo, String timestamp, ObjectNode objectNode,
-                                   String firstDate, String lastDate, Calendar c, Calendar lastDateCalendar,
+    public void doIncrementalQuery(String query, String firstDate, String lastDate, Calendar c, Calendar lastDateCalendar,
                                    SimpleDateFormat sdf, String start, String date)
             throws SQLException, ParseException, ClassNotFoundException {
         Connection conn = DatabaseUtils.getConnection();
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode objectNode = objectMapper.createObjectNode();
+        JsonNode jsonNode;
+        int clusteringAlgo = -1;
+        String timestamp = null;
+        try {
+            jsonNode = objectMapper.readTree(query);
+            clusteringAlgo = Integer.parseInt(jsonNode.get("clusteringAlgo").asText());
+            timestamp = jsonNode.get("timestamp").asText();
+            query = jsonNode.get("query").asText();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         PreparedStatement state = DatabaseUtils.prepareStatement(query, conn, date, start);
         ResultSet resultSet = state.executeQuery();
         bindFields(objectNode, timestamp, date, c, lastDateCalendar);
@@ -106,6 +120,9 @@ public class GraphController extends Controller {
             resultSet = state.executeQuery();
             loadKmeans(resultSet);
         }
+        objectNode.put("option", 0);
+        String json = objectNode.toString();
+        bundleActor.returnData(json);
         resultSet.close();
         state.close();
     }
@@ -173,7 +190,7 @@ public class GraphController extends Controller {
         }
     }
 
-    public void cluster(String query, BundleActor bundleActor) {
+    public void cluster(String query) {
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode jsonNode = null;
         try {
@@ -283,7 +300,7 @@ public class GraphController extends Controller {
         bundleActor.returnData(objectNode.toString());
     }
 
-    private void edgeCluster(String query, BundleActor bundleActor) {
+    private void edgeCluster(String query) {
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode jsonNode = null;
         try {

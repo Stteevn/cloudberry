@@ -8,8 +8,24 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
+/**
+ * Implementation of tree cut algorithm
+ */
 public class TreeCut {
 
+    /**
+     * Main process of tree cut algorithm.
+     * @param pointCluster hierarchical structure from HGC algorithm
+     * @param lowerLongitude lowerLongitude of user screen
+     * @param upperLongitude upperLongitude of user screen
+     * @param lowerLatitude lowerLatitude of user screen
+     * @param upperLatitude upperLatitude of user screen
+     * @param zoom zoom level of user screen
+     * @param edges edge set to be returned
+     * @param externalEdgeSet edge set with only one node inside screen
+     * @param externalCluster outside cluster corresponding to edge set with only one node inside screen
+     * @param internalCluster inside screen clusters
+     */
     public void treeCut(PointCluster pointCluster, double lowerLongitude, double upperLongitude, double lowerLatitude, double upperLatitude, int zoom, HashMap<Edge, Integer> edges, HashSet<Edge> externalEdgeSet, HashSet<Cluster> externalCluster, HashSet<Cluster> internalCluster) {
         HashMap<Cluster, Cluster> externalClusterMap = new HashMap<>();
         HashMap<Cluster, ArrayList<Cluster>> externalHierarchy = new HashMap<>();
@@ -76,6 +92,11 @@ public class TreeCut {
         }
     }
 
+    /**
+     * Elevates the hierarchy of internal clusters.
+     * @param internalHierarchy internal cluster set
+     * @return elevated cluster
+     */
     private HashSet<Cluster> elevateHierarchy(HashSet<Cluster> internalHierarchy) {
         HashSet<Cluster> tempInternalHierarchy = new HashSet<>();
         for (Cluster c : internalHierarchy) {
@@ -86,6 +107,12 @@ public class TreeCut {
         return tempInternalHierarchy;
     }
 
+    /**
+     * Elevates the hierarchy of external clusters
+     * @param externalHierarchy external cluster map to the ancestor
+     * @param externalClusterMap cluster in the final result each external cluster mapped to
+     * @return elevated cluster
+     */
     private HashMap<Cluster, ArrayList<Cluster>> elevateHierarchy(HashMap<Cluster, ArrayList<Cluster>> externalHierarchy, HashMap<Cluster, Cluster> externalClusterMap) {
         HashMap<Cluster, ArrayList<Cluster>> tempExternalHierarchy = new HashMap<>();
         for (Map.Entry<Cluster, ArrayList<Cluster>> entry : externalHierarchy.entrySet()) {
@@ -112,14 +139,25 @@ public class TreeCut {
         return tempExternalHierarchy;
     }
 
-    private void addClusterHierarchy(HashSet<Cluster> externalCluster, HashSet<Cluster> internalHierarchy) {
-        for (Cluster c : externalCluster) {
+    /**
+     * Initializes the hierarchy of internal clusters.
+     * @param internalHierarchy initialized ancestor cluster set
+     * @param internalCluster original internal cluster
+     */
+    private void addClusterHierarchy(HashSet<Cluster> internalCluster, HashSet<Cluster> internalHierarchy) {
+        for (Cluster c : internalCluster) {
             if (c.parent != null) {
                 internalHierarchy.add(c.parent);
             }
         }
     }
 
+    /**
+     * Initializes the hierarchy of external clusters.
+     * @param externalCluster original external cluster
+     * @param externalHierarchy external cluster map to the ancestor
+     * @param externalClusterMap cluster in the final result each external cluster mapped to
+     */
     private void addClusterHierarchy(HashSet<Cluster> externalCluster, HashMap<Cluster, ArrayList<Cluster>> externalHierarchy, HashMap<Cluster, Cluster> externalClusterMap) {
         for (Cluster c : externalCluster) {
             if (c.parent != null) {
@@ -137,6 +175,13 @@ public class TreeCut {
 
     }
 
+    /**
+     * Not applying treecut algorithm
+     * @param pointCluster hierarchical structure from HGC algorithm
+     * @param zoom zoom level of user screen
+     * @param edges edge set to be returned
+     * @param externalEdgeSet edge set with only one node inside screen
+     */
     public void nonTreeCut(PointCluster pointCluster, int zoom, HashMap<Edge, Integer> edges, HashSet<Edge> externalEdgeSet) {
         for (Edge edge : externalEdgeSet) {
             Cluster fromCluster = pointCluster.parentCluster(new Cluster(PointCluster.lngX(edge.getFromLongitude()), PointCluster.latY(edge.getFromLatitude())), zoom);

@@ -1,9 +1,7 @@
 package algorithms;
 
-import actors.BundleActor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import controllers.GraphController;
 import utils.PropertiesUtil;
 
@@ -13,40 +11,44 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Properties;
 
+/**
+ * Implement the incremental database query
+ */
 public class IncrementalQuery {
 
+    // Saved graphController context for returning back
     private GraphController context;
     // Configuration properties
     private Properties configProps;
 
-    public void prepareIncremental(GraphController graphController, String query, BundleActor bundleActor) {
+    /**
+     * Prepare incremental, read the relative parameters from the request
+     * @param graphController reference graphController context
+     * @param query request message string
+     */
+    public void prepareIncremental(GraphController graphController, String query) {
         context = graphController;
         // parse the json and initialize the variables
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode jsonNode;
-        int clusteringAlgo;
-        String timestamp;
         String endDate = null;
-        String json = null;
         try {
             jsonNode = objectMapper.readTree(query);
-            clusteringAlgo = Integer.parseInt(jsonNode.get("clusteringAlgo").asText());
-            timestamp = jsonNode.get("timestamp").asText();
-            query = jsonNode.get("query").asText();
             if (jsonNode.has("date")) {
                 endDate = jsonNode.get("date").asText();
             }
-            ObjectNode objectNode = objectMapper.createObjectNode();
-            readProperties(query, endDate, clusteringAlgo, timestamp, objectNode);
-            objectNode.put("option", 0);
-            json = objectNode.toString();
+            readProperties(query, endDate);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        bundleActor.returnData(json);
     }
 
-    private void readProperties(String query, String endDate, int clusteringAlgo, String timestamp, ObjectNode objectNode) {
+    /**
+     * Reads the properties file.
+     * @param query query message string
+     * @param endDate endDate parsed from query string
+     */
+    private void readProperties(String query, String endDate) {
         String firstDate = null;
         String lastDate = null;
         int queryPeriod = 0;
@@ -58,41 +60,51 @@ public class IncrementalQuery {
         } catch (IOException ex) {
             System.out.println("The config.properties file does not exist, default properties loaded.");
         }
-        queryClusterWithSlice(query, endDate, clusteringAlgo, timestamp, objectNode, firstDate, lastDate, queryPeriod);
+        calculateDate(query, endDate, firstDate, lastDate, queryPeriod);
     }
 
-    private void queryClusterWithSlice(String query, String endDate, int clusteringAlgo, String timestamp, ObjectNode objectNode, String firstDate, String lastDate, int queryPeriod) {
+    /**
+     * Calculates the target query dates.
+     * @param query query message string
+     * @param endDate endDate parsed from query string
+     * @param firstDate first date in the database read from configuration file
+     * @param lastDate last date in the database read from configuration file
+     * @param queryPeriod query period in the database read from configuration file
+     */
+    private void calculateDate(String query, String endDate, String firstDate, String lastDate, int queryPeriod) {
         Calendar c, lastDateCalendar;
         SimpleDateFormat sdf;
         String start, date;
         try {
             sdf = new SimpleDateFormat("yyyyMMddHHmmss");
-            date = getDate(endDate, firstDate);
+            date = (endDate == null) ? firstDate : endDate;
             start = date;
             c = incrementCalendar(queryPeriod, date, sdf);
             date = sdf.format(c.getTime());
             lastDateCalendar = Calendar.getInstance();
             lastDateCalendar.setTime(sdf.parse(lastDate));
-            context.doIncrementalQuery(query, clusteringAlgo, timestamp, objectNode, firstDate, lastDate, c, lastDateCalendar, sdf, start, date);
+            context.doIncrementalQuery(query, firstDate, lastDate, c, lastDateCalendar, sdf, start, date);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private Calendar incrementCalendar(int queryPeriod, String date, SimpleDateFormat sdf) throws ParseException {
+    /**
+     * Incremental the date by query period。
+     * @param queryPeriod query period in the database read from configuration file
+     * @param date base date
+     * @param sdf date format
+     * @return Calendar object after incremental
+     */
+    private Calendar incrementCalendar(int queryPeriod, String date, SimpleDateFormat sdf) {
         Calendar c = Calendar.getInstance();
-        c.setTime(sdf.parse(date));
+        try {
+            c.setTime(sdf.parse(date));
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
         c.add(Calendar.HOUR, queryPeriod);  // number of days to add
         return c;
     }
 
-    private String getDate(String endDate, String firstDate) {
-        String date;
-        if (endDate == null) {
-            date = firstDate;  // Start date
-        } else {
-            date = endDate;
-        }
-        return date;
-    }
 }

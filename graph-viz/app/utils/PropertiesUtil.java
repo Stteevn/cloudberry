@@ -6,6 +6,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
+/**
+ * Util class to read properties file.
+ */
 public class PropertiesUtil {
 
     private static File configFile = new File("./conf/config.properties");
