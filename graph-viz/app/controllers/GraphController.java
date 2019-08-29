@@ -9,11 +9,11 @@ import models.*;
 import play.mvc.*;
 import actors.BundleActor;
 import utils.DatabaseUtils;
+import utils.PropertiesUtil;
 
 import java.io.IOException;
 import java.sql.*;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -35,6 +35,7 @@ public class GraphController extends Controller {
     private Set<Edge> edgeSet = new HashSet<>();
     private BundleActor bundleActor;
     private ObjectMapper objectMapper = new ObjectMapper();
+    private IncrementalQuery incrementalQuery;
 
     /**
      * Dispatcher for the request message.
@@ -58,9 +59,13 @@ public class GraphController extends Controller {
         // 3: edge and bundled edge and tree cut
         // others: invalid
         int option = -1;
+        String endDate = null;
         try {
             jsonNode = objectMapper.readTree(query);
             option = Integer.parseInt(jsonNode.get("option").asText());
+            if (jsonNode.has("date")) {
+                endDate = jsonNode.get("date").asText();
+            }
         } catch (IOException e) {
             System.err.println("Invalid Request received.");
             e.printStackTrace();
@@ -92,7 +97,13 @@ public class GraphController extends Controller {
 
         switch (option) {
             case 0:
-                new IncrementalQuery().prepareIncremental(this, query);
+                incrementalQuery = new IncrementalQuery();
+                incrementalQuery.readProperties(endDate);
+                try {
+                    doIncrementalQuery(query, incrementalQuery.getStart(), incrementalQuery.getEnd());
+                } catch (SQLException | ParseException e) {
+                    e.printStackTrace();
+                }
                 break;
             case 1:
                 cluster(lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, clustering, clusteringAlgo, timestamp, zoom);
@@ -106,8 +117,7 @@ public class GraphController extends Controller {
         }
     }
 
-    public void doIncrementalQuery(String query, String firstDate, String lastDate, Calendar endCalendar, Calendar lastDateCalendar,
-                                   SimpleDateFormat dateFormat, String start, String end)
+    public void doIncrementalQuery(String query, String start, String end)
             throws SQLException, ParseException {
         Connection conn = DatabaseUtils.getConnection();
         ObjectNode objectNode = objectMapper.createObjectNode();
@@ -129,14 +139,13 @@ public class GraphController extends Controller {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        bindFields(objectNode, timestamp, end, endCalendar, lastDateCalendar);
-        loadCluster(query, clusteringAlgo, timestamp, objectNode, firstDate, lastDate, conn, state, resultSet, endCalendar, lastDateCalendar, dateFormat);
+        bindFields(objectNode, timestamp, end);
+        loadCluster(query, clusteringAlgo, timestamp, objectNode, conn, state, resultSet);
     }
 
 
-    private void loadCluster(String query, int clusteringAlgo, String timestamp, ObjectNode objectNode, String firstDate, String lastDate,
-                            Connection conn, PreparedStatement state, ResultSet resultSet, Calendar endCalendar,
-                            Calendar lastDateCalendar, SimpleDateFormat dateFormat) throws ParseException, SQLException {
+    private void loadCluster(String query, int clusteringAlgo, String timestamp, ObjectNode objectNode,
+                            Connection conn, PreparedStatement state, ResultSet resultSet) throws ParseException, SQLException {
         String start;
         String end;
         if (clusteringAlgo == 0) {
@@ -144,10 +153,9 @@ public class GraphController extends Controller {
         } else if (clusteringAlgo == 1) {
             loadIKmeans(resultSet);
         } else if (clusteringAlgo == 2) {
-            start = firstDate;
-            end = lastDate;
-            endCalendar.setTime(dateFormat.parse(end));
-            bindFields(objectNode, timestamp, end, endCalendar, lastDateCalendar);
+            start = PropertiesUtil.firstDate;
+            end = PropertiesUtil.lastDate;
+            bindFields(objectNode, timestamp, end);
             state = DatabaseUtils.prepareStatement(query, conn, end, start);
             resultSet = state.executeQuery();
             loadKmeans(resultSet);
@@ -209,10 +217,21 @@ public class GraphController extends Controller {
         pointCluster.load(points);
     }
 
-    private void bindFields(ObjectNode objectNode, String timestamp, String end, Calendar endCalendar, Calendar lastDateCalendar) {
+    private static Calendar getCalendar(String date) {
+        Calendar calendar = Calendar.getInstance();
+        try {
+            calendar.setTime(PropertiesUtil.dateFormat.parse(date));
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return calendar;
+    }
+
+    private static void bindFields(ObjectNode objectNode, String timestamp, String end) {
         objectNode.put("date", end);
         objectNode.put("timestamp", timestamp);
-        if (!endCalendar.before(lastDateCalendar)) {
+        Calendar endCalendar = getCalendar(end);
+        if (!endCalendar.before(PropertiesUtil.lastDateCalender)) {
             System.out.println(finished + end);
             objectNode.put("flag", finished);
         } else {
@@ -226,6 +245,7 @@ public class GraphController extends Controller {
         int pointsCnt = 0;
         int clustersCnt = 0;
         int repliesCnt = edgeSet.size();
+        System.out.println(clustering);
         if (clusteringAlgo == 0) {
             if (pointCluster != null) {
                 ArrayNode arrayNode = objectMapper.createArrayNode();
