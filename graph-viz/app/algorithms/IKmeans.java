@@ -14,19 +14,13 @@ public class IKmeans {
     private Kmeans kmeans;
     private int k; // the number of clusters desired
     private int dataSetLength; // the number of points in the dataset
-    private List<double[]> dataSet; // the dataset list
+    private List<double[]> dataSet; // the dataset for clustering
     private ArrayList<double[]> center; // the list of centers of clusters
     private List<List<double[]>> cluster; // the list of clusters for the current batch of data
     private List<List<double[]>> allCluster; // the list of clusters for all accumulated data
     private int pointsCnt; // the count of points in all accumulated data
     private Random random;
     private HashMap<Point, Integer> parents = new HashMap<>(); // map of points and its cluster
-
-    /**
-     * Set the dataset for clustering
-     *
-     * @param dataSet
-     */
 
     public void setDataSet(List<double[]> dataSet) {
         this.dataSet = dataSet;
@@ -36,12 +30,6 @@ public class IKmeans {
     public int getK() {
         return k;
     }
-
-    /**
-     * Get the resulting clusters
-     *
-     * @return Clustering result
-     */
 
     public List<List<double[]>> getAllCluster() {
         return allCluster;
@@ -92,7 +80,7 @@ public class IKmeans {
     /**
      * Add each point to its closest cluster
      */
-    public void clusterSet() {
+    private void clusterSet() {
         double[] distance = new double[k];
         for (int i = 0; i < dataSetLength; i++) {
             for (int j = 0; j < k; j++) {
@@ -108,7 +96,7 @@ public class IKmeans {
     /**
      * Set the new center for each cluster
      */
-    public void setNewCenter() {
+    private void setNewCenter() {
         for (int i = 0; i < k; i++) {
             int n = cluster.get(i).size();
             if (n != 0) {
@@ -132,7 +120,7 @@ public class IKmeans {
      *
      * @param data the new batch of data
      */
-    public void loadBatchData(List<double[]> data) {
+    public void execute(List<double[]> data) {
         setDataSet(data);
         clusterSet();
         setNewCenter();

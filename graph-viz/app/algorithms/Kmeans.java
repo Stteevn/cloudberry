@@ -13,7 +13,7 @@ public class Kmeans {
     private int k; // the number of clusters desired
     private int m; // the number of iterations
     private int dataSetLength; // the number of points in the dataset
-    private List<double[]> dataSet; // the dataset list
+    private List<double[]> dataSet; // the dataset for clustering
     private ArrayList<double[]> center; // the list of centers of clusters
     private List<List<double[]>> cluster; // the list of clusters for the whole dataset
     private ArrayList<Double> squaredErrorSums; // the sum of squared errors
@@ -40,21 +40,9 @@ public class Kmeans {
         return k;
     }
 
-    /**
-     * Set the dataset for clustering
-     *
-     * @param dataSet
-     */
-
     public void setDataSet(List<double[]> dataSet) {
         this.dataSet = dataSet;
     }
-
-    /**
-     * Get the resulting clusters
-     *
-     * @return Clustering result
-     */
 
     public List<List<double[]>> getCluster() {
         return cluster;
@@ -79,24 +67,12 @@ public class Kmeans {
         m = 0;
         random = new Random();
         if (dataSet == null || dataSet.size() == 0) {
-            initDataSet();
+            System.err.println("Dataset missing.");
         }
         dataSetLength = dataSet.size();
         center = initCenters(dataSetLength, dataSet, random);
         cluster = initCluster();
         squaredErrorSums = new ArrayList<>();
-    }
-
-    /**
-     * If the dataset is not initialized, use the one below for testing
-     */
-    private void initDataSet() {
-        dataSet = new ArrayList<>();
-        double[][] dataSetArray = new double[][]{{8, 2}, {3, 4}, {2, 5},
-                {4, 2}, {7, 3}, {6, 2}, {4, 7}, {6, 3}, {5, 3},
-                {6, 3}, {6, 9}, {1, 6}, {3, 9}, {4, 1}, {8, 6}};
-
-        dataSet.addAll(Arrays.asList(dataSetArray));
     }
 
     /**
@@ -261,24 +237,10 @@ public class Kmeans {
     }
 
     /**
-     * Print data for testing
-     *
-     * @param dataArray     dataset
-     * @param dataArrayName dataset name
-     */
-    public void printDataArray(ArrayList<double[]> dataArray,
-                               String dataArrayName) {
-        for (int i = 0; i < dataArray.size(); i++) {
-            System.out.println("print:" + dataArrayName + "[" + i + "]={"
-                    + dataArray.get(i)[0] + "," + dataArray.get(i)[1] + "}");
-        }
-        System.out.println("===================================");
-    }
-
-    /**
      * the core method of K-Means
      */
-    public void kmeans() {
+    public void execute(List<double[]> dataSet) {
+        setDataSet(dataSet);
         init();
         // iterate until no change in the sum of squared errors
         while (true) {
@@ -295,41 +257,5 @@ public class Kmeans {
             cluster.clear();
             cluster = initCluster();
         }
-        System.out.println("note:the times of repeat:m=" + m); // output the number of iterations
-    }
-
-    /**
-     * execute the K-Means algorithm
-     */
-    public void execute() {
-        long startTime = System.currentTimeMillis();
-        System.out.println("kmeans begins");
-        kmeans();
-        long endTime = System.currentTimeMillis();
-        System.out.println("kmeans running time=" + (endTime - startTime)
-                + "ms");
-        System.out.println("kmeans ends");
-        System.out.println();
-    }
-
-    /**
-     * Experiment setup
-     *
-     * @param args
-     */
-    public static void main(String[] args) {
-        int k = 100;
-        Kmeans kmeans = new Kmeans(k);
-        ArrayList<double[]> dataSet = new ArrayList<>();
-        int tot = 640000;
-        for (int i = 0; i < tot; i++) {
-            dataSet.add(new double[]{(double) Math.random(), (double) Math.random()});
-        }
-        long startTime = System.currentTimeMillis();
-        kmeans.setDataSet(dataSet);
-        kmeans.execute();
-        long endTime = System.currentTimeMillis();
-        NumberFormat formatter = new DecimalFormat("#0.00000");
-        System.out.print("Execution time is " + formatter.format((endTime - startTime) / 1000d) + " seconds");
     }
 }
