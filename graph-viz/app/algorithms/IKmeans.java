@@ -18,7 +18,7 @@ public class IKmeans {
     private ArrayList<double[]> center; // the list of centers of clusters
     private List<List<double[]>> cluster; // the list of clusters for the current batch of data
     private List<List<double[]>> allCluster; // the list of clusters for all accumulated data
-    public int pointsCnt; // the count of points in all accumulated data
+    private int pointsCnt; // the count of points in all accumulated data
     private Random random;
     private HashMap<Point, Integer> parents = new HashMap<>(); // map of points and its cluster
 
@@ -53,6 +53,10 @@ public class IKmeans {
 
     public HashMap<Point, Integer> getParents() {
         return parents;
+    }
+
+    public int getPointsCnt() {
+        return pointsCnt;
     }
 
     /**

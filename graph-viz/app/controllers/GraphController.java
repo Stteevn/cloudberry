@@ -212,7 +212,6 @@ public class GraphController extends Controller {
         int repliesCnt = edgeSet.size();
         if (clusteringAlgo == 0) {
             if (pointCluster != null) {
-                objectMapper = new ObjectMapper();
                 ArrayNode arrayNode = objectMapper.createArrayNode();
                 ArrayList<Cluster> points = pointCluster.getClusters(new double[]{lowerLongitude, lowerLatitude, upperLongitude, upperLatitude}, 18);
                 ArrayList<Cluster> clusters = pointCluster.getClusters(new double[]{lowerLongitude, lowerLatitude, upperLongitude, upperLatitude}, zoom);
@@ -230,9 +229,8 @@ public class GraphController extends Controller {
         } else if (clusteringAlgo == 1) {
             if (iKmeans != null) {
                 if (clustering == 0) {
-                    objectMapper = new ObjectMapper();
                     ArrayNode arrayNode = objectMapper.createArrayNode();
-                    pointsCnt = iKmeans.pointsCnt;
+                    pointsCnt = iKmeans.getPointsCnt();
                     clustersCnt = pointsCnt;
                     for (int i = 0; i < iKmeans.getK(); i++) {
                         for (int j = 0; j < iKmeans.getAllCluster().get(i).size(); j++) {
@@ -245,9 +243,8 @@ public class GraphController extends Controller {
                     json = arrayNode.toString();
                     System.out.printf("The number of points is %d\n", clustersCnt);
                 } else {
-                    objectMapper = new ObjectMapper();
                     ArrayNode arrayNode = objectMapper.createArrayNode();
-                    pointsCnt = iKmeans.pointsCnt;
+                    pointsCnt = iKmeans.getPointsCnt();
                     clustersCnt = iKmeans.getK();
                     for (int i = 0; i < iKmeans.getK(); i++) {
                         ObjectNode objectNode = objectMapper.createObjectNode();
@@ -262,7 +259,6 @@ public class GraphController extends Controller {
         } else if (clusteringAlgo == 2) {
             if (kmeans != null) {
                 if (clustering == 0) {
-                    objectMapper = new ObjectMapper();
                     ArrayNode arrayNode = objectMapper.createArrayNode();
                     pointsCnt = kmeans.getDataSetLength();
                     clustersCnt = pointsCnt;
@@ -275,7 +271,6 @@ public class GraphController extends Controller {
                     json = arrayNode.toString();
                     System.out.printf("The number of points is %d\n", clustersCnt);
                 } else {
-                    objectMapper = new ObjectMapper();
                     ArrayNode arrayNode = objectMapper.createArrayNode();
                     pointsCnt = kmeans.getDataSetLength();
                     clustersCnt = kmeans.getK();
@@ -320,8 +315,7 @@ public class GraphController extends Controller {
         int treeCutting = Integer.parseInt(jsonNode.get("treeCut").asText());
         objectMapper = new ObjectMapper();
         ObjectNode objectNode = objectMapper.createObjectNode();
-        ArrayNode arrayNode = objectMapper.createArrayNode();
-        int edgesCnt = 0;
+        int edgesCnt;
         int repliesCnt = edgeSet.size();
         if (clusteringAlgo == 0) {
             if (pointCluster != null) {
@@ -381,15 +375,15 @@ public class GraphController extends Controller {
                 edgesCnt = edges.size();
                 objectNode.put("edgesCnt", edgesCnt);
                 if (bundling == 0) {
-                    objectNode = noBundling(objectMapper, objectNode, arrayNode, edgesCnt, edges);
+                    noBundling(objectMapper, objectNode, edgesCnt, edges);
                 } else {
                     runFDEB(objectMapper, zoom, objectNode, edges);
                 }
             }
         } else if (clusteringAlgo == 1) {
-            getKmeansEdges(objectMapper, zoom, bundling, clustering, objectNode, arrayNode, iKmeans != null, iKmeans.getParents(), iKmeans.getCenter());
+            getKmeansEdges(objectMapper, zoom, bundling, clustering, objectNode, iKmeans != null, iKmeans.getParents(), iKmeans.getCenter());
         } else if (clusteringAlgo == 2) {
-            getKmeansEdges(objectMapper, zoom, bundling, clustering, objectNode, arrayNode, kmeans != null, kmeans.getParents(), kmeans.getCenter());
+            getKmeansEdges(objectMapper, zoom, bundling, clustering, objectNode, kmeans != null, kmeans.getParents(), kmeans.getCenter());
         }
         objectNode.put("repliesCnt", repliesCnt);
         objectNode.put("option", 2);
@@ -398,7 +392,7 @@ public class GraphController extends Controller {
     }
 
 
-    private void getKmeansEdges(ObjectMapper objectMapper, int zoom, int bundling, int clustering, ObjectNode objectNode, ArrayNode arrayNode, boolean b, HashMap<models.Point, Integer> parents, ArrayList<double[]> center) {
+    private void getKmeansEdges(ObjectMapper objectMapper, int zoom, int bundling, int clustering, ObjectNode objectNode, boolean b, HashMap<models.Point, Integer> parents, ArrayList<double[]> center) {
         int edgesCnt;
         if (b) {
             HashMap<Edge, Integer> edges = new HashMap<>();
@@ -434,7 +428,7 @@ public class GraphController extends Controller {
             edgesCnt = edges.size();
             objectNode.put("edgesCnt", edgesCnt);
             if (bundling == 0) {
-                noBundling(objectMapper, objectNode, arrayNode, edgesCnt, edges);
+                noBundling(objectMapper, objectNode, edgesCnt, edges);
             } else {
                 runFDEB(objectMapper, zoom, objectNode, edges);
             }
@@ -442,7 +436,6 @@ public class GraphController extends Controller {
     }
 
     private void runFDEB(ObjectMapper objectMapper, int zoom, ObjectNode objectNode, HashMap<Edge, Integer> edges) {
-        int isolatedEdgesCnt;
         String json;
         ArrayList<Point> dataNodes = new ArrayList<>();
         ArrayList<EdgeVector> dataEdges = new ArrayList<>();
@@ -462,7 +455,7 @@ public class GraphController extends Controller {
         ArrayList<Path> pathResult = forceBundling.forceBundle();
         long bundlingTime = System.currentTimeMillis() - beforeBundling;
         System.out.println("bundling time: " + bundlingTime + "ms");
-        isolatedEdgesCnt = forceBundling.getIsolatedEdgesCnt();
+        int isolatedEdgesCnt = forceBundling.getIsolatedEdgesCnt();
         ArrayNode pathJson = objectMapper.createArrayNode();
         int edgeNum = 0;
         for (Path path : pathResult) {
@@ -486,10 +479,9 @@ public class GraphController extends Controller {
         objectNode.put("isolatedEdgesCnt", isolatedEdgesCnt);
     }
 
-    private ObjectNode noBundling(ObjectMapper objectMapper, ObjectNode objectNode, ArrayNode arrayNode, int edgesCnt, HashMap<Edge, Integer> edges) {
-        int isolatedEdgesCnt;
+    private void noBundling(ObjectMapper objectMapper, ObjectNode objectNode, int edgesCnt, HashMap<Edge, Integer> edges) {
         String json;
-        isolatedEdgesCnt = edgesCnt;
+        ArrayNode arrayNode = objectMapper.createArrayNode();
         for (Map.Entry<Edge, Integer> entry : edges.entrySet()) {
             ObjectNode lineNode = objectMapper.createObjectNode();
             lineNode.putArray("from").add(entry.getKey().getFromLongitude()).add(entry.getKey().getFromLatitude());
@@ -499,8 +491,7 @@ public class GraphController extends Controller {
         }
         json = arrayNode.toString();
         objectNode.put("data", json);
-        objectNode.put("isolatedEdgesCnt", isolatedEdgesCnt);
-        return objectNode;
+        objectNode.put("isolatedEdgesCnt", edgesCnt);
     }
 
 
