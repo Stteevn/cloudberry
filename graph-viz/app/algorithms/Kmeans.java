@@ -7,7 +7,7 @@ import java.text.NumberFormat;
 import java.util.*;
 
 /**
- * K-Menas algorithm
+ * K-Means algorithm
  */
 public class Kmeans {
     private int k; // the number of clusters desired
@@ -207,7 +207,7 @@ public class Kmeans {
     private void findParents() {
         for (int i = 0; i < cluster.size(); i++) {
             for (int j = 0; j < cluster.get(i).size(); j++) {
-                Point point = new Point(cluster.get(i).get(j)[0] ,cluster.get(i).get(j)[1]);
+                Point point = new Point(cluster.get(i).get(j)[0], cluster.get(i).get(j)[1]);
                 parents.put(point, i);
             }
         }
@@ -314,6 +314,7 @@ public class Kmeans {
 
     /**
      * Experiment setup
+     *
      * @param args
      */
     public static void main(String[] args) {

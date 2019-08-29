@@ -72,18 +72,18 @@ public class IncrementalQuery {
      * @param queryPeriod query period in the database read from configuration file
      */
     private void calculateDate(String query, String endDate, String firstDate, String lastDate, int queryPeriod) {
-        Calendar c, lastDateCalendar;
-        SimpleDateFormat sdf;
-        String start, date;
+        Calendar endCalendar, lastDateCalendar;
+        SimpleDateFormat dateFormat;
+        String start, end;
         try {
-            sdf = new SimpleDateFormat("yyyyMMddHHmmss");
-            date = (endDate == null) ? firstDate : endDate;
-            start = date;
-            c = incrementCalendar(queryPeriod, date, sdf);
-            date = sdf.format(c.getTime());
+            dateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
+            end = (endDate == null) ? firstDate : endDate;
+            start = end;
+            endCalendar = incrementCalendar(queryPeriod, start, dateFormat);
+            end = dateFormat.format(endCalendar.getTime());
             lastDateCalendar = Calendar.getInstance();
-            lastDateCalendar.setTime(sdf.parse(lastDate));
-            context.doIncrementalQuery(query, firstDate, lastDate, c, lastDateCalendar, sdf, start, date);
+            lastDateCalendar.setTime(dateFormat.parse(lastDate));
+            context.doIncrementalQuery(query, firstDate, lastDate, endCalendar, lastDateCalendar, dateFormat, start, end);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -92,19 +92,19 @@ public class IncrementalQuery {
     /**
      * Incremental the date by query period。
      * @param queryPeriod query period in the database read from configuration file
-     * @param date base date
-     * @param sdf date format
+     * @param start base date
+     * @param dateFormat date format
      * @return Calendar object after incremental
      */
-    private Calendar incrementCalendar(int queryPeriod, String date, SimpleDateFormat sdf) {
-        Calendar c = Calendar.getInstance();
+    private Calendar incrementCalendar(int queryPeriod, String start, SimpleDateFormat dateFormat) {
+        Calendar endCalendar = Calendar.getInstance();
         try {
-            c.setTime(sdf.parse(date));
+            endCalendar.setTime(dateFormat.parse(start));
         } catch (ParseException e) {
             e.printStackTrace();
         }
-        c.add(Calendar.HOUR, queryPeriod);  // number of days to add
-        return c;
+        endCalendar.add(Calendar.HOUR, queryPeriod);  // number of days to add
+        return endCalendar;
     }
 
 }

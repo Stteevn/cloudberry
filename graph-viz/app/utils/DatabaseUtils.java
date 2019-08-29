@@ -30,19 +30,19 @@ public class DatabaseUtils {
      * Prepares the statement to do database query
      * @param query query keyword
      * @param conn database connection object
-     * @param date query end date
+     * @param end query end date
      * @param start query start date
      * @return constructed statement
      * @throws SQLException
      */
-    public static PreparedStatement prepareStatement(String query, Connection conn, String date, String start) throws SQLException {
+    public static PreparedStatement prepareStatement(String query, Connection conn, String end, String start) throws SQLException {
         PreparedStatement state;
         String searchQuery = QueryStatement.incrementalStatement;
         state = conn.prepareStatement(searchQuery);
         state.setString(1, query);
         state.setString(2, query);
         state.setString(3, start);
-        state.setString(4, date);
+        state.setString(4, end);
         return state;
     }
 }

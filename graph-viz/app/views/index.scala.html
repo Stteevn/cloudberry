@@ -276,6 +276,18 @@
                     return clusteringAlgo;
                 }
 
+                function updatePointsStats(json) {
+                    document.getElementById('repliesCnt').innerHTML = "Reply Tweets Count: " + json['repliesCnt'] + " / 15722639";
+                    document.getElementById('pointsCnt').innerHTML = "Points Count: " + json['pointsCnt'];
+                    document.getElementById('clustersCnt').innerHTML = "Clusters Count: " + json['clustersCnt'];
+                }
+
+                function updateEdgesStats(json) {
+                    document.getElementById('repliesCnt').innerHTML = "Reply Tweets Count: " + json['repliesCnt'] + " / 15722639";
+                    document.getElementById('edgesCnt').innerHTML = "Edges Count: " + json['edgesCnt'];
+                    document.getElementById('bundledEdgesCnt').innerHTML = "Bundled Edges Count: " + (json['edgesCnt'] - json['isolatedEdgesCnt']);
+                }
+
                 function renderClusterPoints(minLng, minLat, maxLng, maxLat, zoom) {
                     var clusteringAlgo = getClusteringAlgo();
                     var clustering_control = 1;
@@ -400,15 +412,11 @@
                                 renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
                             }
                         } else if (option === 1) {
-                            document.getElementById('repliesCnt').innerHTML = "Reply Tweets Count: " + json['repliesCnt'] + " / 15722639";
-                            document.getElementById('pointsCnt').innerHTML = "Points Count: " + json['pointsCnt'];
-                            document.getElementById('clustersCnt').innerHTML = "Clusters Count: " + json['clustersCnt'];
+                            updatePointsStats(json);
                             data = JSON.parse(json['data']);
                             receiveClusterPoints(data);
                         } else {
-                            document.getElementById('repliesCnt').innerHTML = "Reply Tweets Count: " + json['repliesCnt'] + " / 15722639";
-                            document.getElementById('edgesCnt').innerHTML = "Edges Count: " + json['edgesCnt'];
-                            document.getElementById('bundledEdgesCnt').innerHTML = "Bundled Edges Count: " + (json['edgesCnt'] - json['isolatedEdgesCnt']);
+                            updateEdgesStats(json);
                             data = JSON.parse(json['data']);
                             receiveClusterEdges(data);
                         }

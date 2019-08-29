@@ -125,6 +125,7 @@ public class IKmeans {
 
     /**
      * load the new batch of data and do incremental K-Means
+     *
      * @param data the new batch of data
      */
     public void loadBatchData(List<double[]> data) {
