@@ -35,7 +35,8 @@ public class GraphController extends Controller {
     private Set<Edge> edgeSet = new HashSet<>();
     private BundleActor bundleActor;
     private ObjectMapper objectMapper = new ObjectMapper();
-    private IncrementalQuery incrementalQuery;
+    // Size of resultSet
+    private int resultSetSize = 0;
 
     /**
      * Dispatcher for the request message.
@@ -97,7 +98,7 @@ public class GraphController extends Controller {
 
         switch (option) {
             case 0:
-                incrementalQuery = new IncrementalQuery();
+                IncrementalQuery incrementalQuery = new IncrementalQuery();
                 incrementalQuery.readProperties(endDate);
                 try {
                     doIncrementalQuery(query, incrementalQuery.getStart(), incrementalQuery.getEnd());
@@ -117,7 +118,7 @@ public class GraphController extends Controller {
         }
     }
 
-    public void doIncrementalQuery(String query, String start, String end)
+    private void doIncrementalQuery(String query, String start, String end)
             throws SQLException, ParseException {
         Connection conn = DatabaseUtils.getConnection();
         ObjectNode objectNode = objectMapper.createObjectNode();
@@ -170,6 +171,7 @@ public class GraphController extends Controller {
     private List<double[]> getKmeansData(ResultSet resultSet) throws SQLException {
         List<double[]> data = new ArrayList<>();
         while (resultSet.next()) {
+            resultSetSize++;
             double fromLongitude = resultSet.getDouble("from_longitude");
             double fromLatitude = resultSet.getDouble("from_latitude");
             double toLongitude = resultSet.getDouble("to_longitude");
@@ -204,6 +206,7 @@ public class GraphController extends Controller {
     private void loadHGC(ResultSet resultSet) throws SQLException {
         ArrayList<Cluster> points = new ArrayList<>();
         while (resultSet.next()) {
+            resultSetSize++;
             double fromLongitude = resultSet.getDouble("from_longitude");
             double fromLatitude = resultSet.getDouble("from_latitude");
             double toLongitude = resultSet.getDouble("to_longitude");
@@ -227,7 +230,7 @@ public class GraphController extends Controller {
         return calendar;
     }
 
-    private static void bindFields(ObjectNode objectNode, String timestamp, String end) {
+    private void bindFields(ObjectNode objectNode, String timestamp, String end) {
         objectNode.put("date", end);
         objectNode.put("timestamp", timestamp);
         Calendar endCalendar = getCalendar(end);
@@ -244,8 +247,7 @@ public class GraphController extends Controller {
         String json = "";
         int pointsCnt = 0;
         int clustersCnt = 0;
-        int repliesCnt = edgeSet.size();
-        System.out.println(clustering);
+        int repliesCnt = resultSetSize;
         if (clusteringAlgo == 0) {
             if (pointCluster != null) {
                 ArrayNode arrayNode = objectMapper.createArrayNode();
@@ -329,7 +331,7 @@ public class GraphController extends Controller {
     private void edgeCluster(double lowerLongitude, double upperLongitude, double lowerLatitude, double upperLatitude, int clusteringAlgo, String timestamp, int zoom, int bundling, int clustering, int treeCutting) {
         ObjectNode objectNode = objectMapper.createObjectNode();
         int edgesCnt;
-        int repliesCnt = edgeSet.size();
+        int repliesCnt = resultSetSize;
         if (clusteringAlgo == 0) {
             if (pointCluster != null) {
                 HashMap<Edge, Integer> edges = new HashMap<>();

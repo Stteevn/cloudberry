@@ -51,7 +51,6 @@ public class IncrementalQuery {
     /**
      * Incremental the date by query period。
      * @param start base date
-     * @return Calendar object after incremental
      */
     private void incrementCalendar(String start) {
         Calendar endCalendar = Calendar.getInstance();
