@@ -76,7 +76,7 @@ public class GraphController extends Controller {
         double lowerLatitude = 0;
         double upperLatitude = 0;
         int clustering = 0;
-        int clusteringAlgo = 0;
+        int clusteringAlgorithm = 0;
         int bundling = 0;
         String timestamp = null;
         int zoom = 0;
@@ -86,7 +86,7 @@ public class GraphController extends Controller {
             upperLongitude = Double.parseDouble(jsonNode.get("upperLongitude").asText());
             lowerLatitude = Double.parseDouble(jsonNode.get("lowerLatitude").asText());
             upperLatitude = Double.parseDouble(jsonNode.get("upperLatitude").asText());
-            clusteringAlgo = Integer.parseInt(jsonNode.get("clusteringAlgo").asText());
+            clusteringAlgorithm = Integer.parseInt(jsonNode.get("clusteringAlgorithm").asText());
             timestamp = jsonNode.get("timestamp").asText();
             zoom = Integer.parseInt(jsonNode.get("zoom").asText());
             bundling = Integer.parseInt(jsonNode.get("bundling").asText());
@@ -107,10 +107,10 @@ public class GraphController extends Controller {
                 }
                 break;
             case 1:
-                cluster(lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, clustering, clusteringAlgo, timestamp, zoom);
+                cluster(lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, clustering, clusteringAlgorithm, timestamp, zoom);
                 break;
             case 2:
-                edgeCluster(lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, clusteringAlgo, timestamp, zoom, bundling, clustering, treeCutting);
+                edgeCluster(lowerLongitude, upperLongitude, lowerLatitude, upperLatitude, clusteringAlgorithm, timestamp, zoom, bundling, clustering, treeCutting);
                 break;
             default:
                 System.err.println("Internal error: no option included");
@@ -123,11 +123,11 @@ public class GraphController extends Controller {
         Connection conn = DatabaseUtils.getConnection();
         ObjectNode objectNode = objectMapper.createObjectNode();
         JsonNode jsonNode;
-        int clusteringAlgo = -1;
+        int clusteringAlgorithm = -1;
         String timestamp = null;
         try {
             jsonNode = objectMapper.readTree(query);
-            clusteringAlgo = Integer.parseInt(jsonNode.get("clusteringAlgo").asText());
+            clusteringAlgorithm = Integer.parseInt(jsonNode.get("clusteringAlgorithm").asText());
             timestamp = jsonNode.get("timestamp").asText();
             query = jsonNode.get("query").asText();
         } catch (IOException e) {
@@ -141,19 +141,19 @@ public class GraphController extends Controller {
             e.printStackTrace();
         }
         bindFields(objectNode, timestamp, end);
-        loadCluster(query, clusteringAlgo, timestamp, objectNode, conn, state, resultSet);
+        loadCluster(query, clusteringAlgorithm, timestamp, objectNode, conn, state, resultSet);
     }
 
 
-    private void loadCluster(String query, int clusteringAlgo, String timestamp, ObjectNode objectNode,
+    private void loadCluster(String query, int clusteringAlgorithm, String timestamp, ObjectNode objectNode,
                             Connection conn, PreparedStatement state, ResultSet resultSet) throws ParseException, SQLException {
         String start;
         String end;
-        if (clusteringAlgo == 0) {
+        if (clusteringAlgorithm == 0) {
             loadHGC(resultSet);
-        } else if (clusteringAlgo == 1) {
+        } else if (clusteringAlgorithm == 1) {
             loadIKmeans(resultSet);
-        } else if (clusteringAlgo == 2) {
+        } else if (clusteringAlgorithm == 2) {
             start = PropertiesUtil.firstDate;
             end = PropertiesUtil.lastDate;
             bindFields(objectNode, timestamp, end);
@@ -243,12 +243,12 @@ public class GraphController extends Controller {
         }
     }
 
-    public void cluster(double lowerLongitude, double upperLongitude, double lowerLatitude, double upperLatitude, int clustering, int clusteringAlgo, String timestamp, int zoom) {
+    public void cluster(double lowerLongitude, double upperLongitude, double lowerLatitude, double upperLatitude, int clustering, int clusteringAlgorithm, String timestamp, int zoom) {
         String json = "";
         int pointsCnt = 0;
         int clustersCnt = 0;
         int repliesCnt = resultSetSize;
-        if (clusteringAlgo == 0) {
+        if (clusteringAlgorithm == 0) {
             if (pointCluster != null) {
                 ArrayNode arrayNode = objectMapper.createArrayNode();
                 ArrayList<Cluster> points = pointCluster.getClusters(new double[]{lowerLongitude, lowerLatitude, upperLongitude, upperLatitude}, 18);
@@ -263,7 +263,7 @@ public class GraphController extends Controller {
                 }
                 json = arrayNode.toString();
             }
-        } else if (clusteringAlgo == 1) {
+        } else if (clusteringAlgorithm == 1) {
             if (iKmeans != null) {
                 if (clustering == 0) {
                     ArrayNode arrayNode = objectMapper.createArrayNode();
@@ -291,7 +291,7 @@ public class GraphController extends Controller {
                     json = arrayNode.toString();
                 }
             }
-        } else if (clusteringAlgo == 2) {
+        } else if (clusteringAlgorithm == 2) {
             if (kmeans != null) {
                 if (clustering == 0) {
                     ArrayNode arrayNode = objectMapper.createArrayNode();
@@ -328,11 +328,11 @@ public class GraphController extends Controller {
         bundleActor.returnData(objectNode.toString());
     }
 
-    private void edgeCluster(double lowerLongitude, double upperLongitude, double lowerLatitude, double upperLatitude, int clusteringAlgo, String timestamp, int zoom, int bundling, int clustering, int treeCutting) {
+    private void edgeCluster(double lowerLongitude, double upperLongitude, double lowerLatitude, double upperLatitude, int clusteringAlgorithm, String timestamp, int zoom, int bundling, int clustering, int treeCutting) {
         ObjectNode objectNode = objectMapper.createObjectNode();
         int edgesCnt;
         int repliesCnt = resultSetSize;
-        if (clusteringAlgo == 0) {
+        if (clusteringAlgorithm == 0) {
             if (pointCluster != null) {
                 HashMap<Edge, Integer> edges = new HashMap<>();
                 if (clustering == 0) {
@@ -363,10 +363,10 @@ public class GraphController extends Controller {
                     runFDEB(zoom, objectNode, edges);
                 }
             }
-        } else if (clusteringAlgo == 1) {
+        } else if (clusteringAlgorithm == 1) {
             if (iKmeans != null)
                 getKmeansEdges(zoom, bundling, clustering, objectNode, iKmeans.getParents(), iKmeans.getCenter());
-        } else if (clusteringAlgo == 2) {
+        } else if (clusteringAlgorithm == 2) {
             if (kmeans != null)
                 getKmeansEdges(zoom, bundling, clustering, objectNode, kmeans.getParents(), kmeans.getCenter());
         }
