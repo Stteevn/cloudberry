@@ -68,7 +68,7 @@
                     id="keyword-textbox" placeholder="Search keywords e.g hurricane">
                     <div class="col-sm-1" style="padding: 0 5px 0 15px">
                         <div class="form-check" style="margin: 10px 0 0 0">
-                            <input type="checkbox" class="form-check-input" id="checkbox" onchange="checkbox_change()">
+                            <input type="checkbox" class="form-check-input" id="edge" onchange="edge_change()">
                             <label class="form-check-label" for="exampleCheck1" >Edge</label>
                         </div>
                     </div>
@@ -111,7 +111,7 @@
                     <p id="bundledEdgesCnt">Bundled Edges Count: 0</p>
                     <form>
                         Clustering Algorithm:
-                        <select id="clusteringAlgo" onchange="drawGraph()">
+                        <select id="clusteringAlgorithm" onchange="drawGraph()">
                             <option value="HGC">HGC</option>
                             <option value="I-KMeans">I-KMeans</option>
                             <option value="KMeans">KMeans</option>
@@ -146,86 +146,87 @@
                     minZoom: 0
                 });
 
-                var current_timestamp;
+                // use timestamp to label every sending request
+                let current_timestamp;
+                let socket;
+                // zoom level after last time
                 let zoomLevel = Math.floor(map.getZoom());
-                var socket;
-                var timerId = 0;
+                // id for the timer used to send heartbeat pack of WebSocket
+                let timerId = 0;
+                let query = "";
+
+                function getScreenStatus() {
+                    let bounds = map.getBounds();
+                    let ne = bounds.getNorthEast();
+                    let sw = bounds.getSouthWest();
+                    return {
+                        "currentZoom": Math.floor(map.getZoom()),
+                        "maxLng": ne.lng,
+                        "maxLat": ne.lat,
+                        "minLng": sw.lng,
+                        "minLat":  sw.lat
+                    };
+                }
 
                 map.on("moveend", () => {
-                    var currentZoom = Math.floor(map.getZoom());
-                    var bounds = map.getBounds();
-                    var ne = bounds.getNorthEast();
-                    var sw = bounds.getSouthWest();
-                    var maxLng = ne.lng;
-                    var maxLat = ne.lat;
-                    var minLng = sw.lng;
-                    var minLat = sw.lat;
-                    // removeLayer();
+                    let status = getScreenStatus();
                     if (document.getElementById("point").checked === true) {
-                        renderClusterPoints(minLng, minLat, maxLng, maxLat, currentZoom);
+                        renderClusterPoints(status['minLng'], status['minLat'],status['maxLng'], status['maxLat'], status['currentZoom']);
                     } else {
                         removeClusterLayer();
                     }
-                    if (document.getElementById("checkbox").checked === true) {
-                        renderClusterEdges(minLng, minLat, maxLng, maxLat, currentZoom);
+                    if (document.getElementById("edge").checked === true) {
+                        renderClusterEdges(status['minLng'], status['minLat'],status['maxLng'], status['maxLat'], status['currentZoom']);
                     } else {
                         removeEdgeClusterLayer();
                     }
                 });
 
                 map.on('zoomend', () => {
-                    var currentZoom = Math.floor(map.getZoom());
-                    var bounds = map.getBounds();
-                    var ne = bounds.getNorthEast();
-                    var sw = bounds.getSouthWest();
-                    var maxLng = ne.lng;
-                    var maxLat = ne.lat;
-                    var minLng = sw.lng;
-                    var minLat = sw.lat;
-                    // removeLayer();
-                    if (zoomLevel !== currentZoom) {
+                    let status = getScreenStatus();
+                    if (zoomLevel !== status['currentZoom']) {
                         if (document.getElementById("point").checked === true) {
-                            renderClusterPoints(minLng, minLat, maxLng, maxLat, currentZoom);
+                            renderClusterPoints(status['minLng'], status['minLat'],status['maxLng'], status['maxLat'], status['currentZoom']);
                         } else {
                             removeClusterLayer();
                         }
-                        if (document.getElementById("checkbox").checked === true) {
-                            renderClusterEdges(minLng, minLat, maxLng, maxLat, currentZoom);
+                        if (document.getElementById("edge").checked === true) {
+                            renderClusterEdges(status['minLng'], status['minLat'],status['maxLng'], status['maxLat'], status['currentZoom']);
                         } else {
                             removeEdgeClusterLayer();
                         }
-                        zoomLevel = currentZoom;
+                        zoomLevel = status['currentZoom'];
                     }
                 });
 
+                function getClusteringAlgorithm() {
+                    const algorithms = {
+                        "HGC": 0,
+                        "I-KMeans": 1,
+                        "KMeans": 2
+                    };
+                    return algorithms[document.getElementById("clusteringAlgorithm").value];
+                }
+
+                function getChoice(elementId) {
+                    let choices = {
+                        true: 1,
+                        false: 0
+                    };
+                    return choices[document.getElementById(elementId).checked];
+                }
+
                 function renderClusterEdges(minLng, minLat, maxLng, maxLat, zoom) {
-                    var clusteringAlgo = getClusteringAlgo();
                     if (socket === undefined) {
                         return;
                     }
-                    var clustering_control;
-                    if (document.getElementById("cluster").checked === true) {
-                        clustering_control = 1;
-                    } else {
-                        clustering_control = 0;
-                    }
-                    var bundling_control;
-                    if (document.getElementById("bundle").checked === true) {
-                        bundling_control = 1;
-                    } else {
-                        bundling_control = 0;
-                    }
-                    var cut_control;
-                    if (document.getElementById("cluster").checked === false) {
-                        if (document.getElementById("tree_cut").checked === true) {
-                            alert("Please select tree cut with cluster.");
-                            $('#tree_cut').prop('checked', false);
-                        }
-                    }
-                    if (document.getElementById("tree_cut").checked === true) {
-                        cut_control = 1;
-                    } else {
-                        cut_control = 0;
+                    let clusteringAlgorithm = getClusteringAlgorithm();
+                    let clustering_control = getChoice("cluster");
+                    let bundling_control = getChoice("bundle");
+                    let cut_control = getChoice("tree_cut");
+                    if (clustering_control === 0 && cut_control === 1) {
+                        alert("Please select tree cut with cluster.");
+                        $('#tree_cut').prop('checked', false);
                     }
                     const sendingObj = {
                         query: query,
@@ -233,7 +234,7 @@
                         upperLongitude: maxLng,
                         lowerLatitude: minLat,
                         upperLatitude: maxLat,
-                        clusteringAlgo: clusteringAlgo,
+                        clusteringAlgorithm: clusteringAlgorithm,
                         bundling: bundling_control,
                         treeCut: cut_control,
                         clustering: clustering_control,
@@ -242,7 +243,6 @@
                         option: 2
                     };
                     const sendingJSON = JSON.stringify(sendingObj);
-                    // console.log('sending ' + sendingJSON);
                     socket.send(sendingJSON);
                 }
 
@@ -264,39 +264,34 @@
                     map.addLayer(iconLayer);
                 }
 
-                function getClusteringAlgo() {
-                    var clusteringAlgo;
-                    if (document.getElementById("clusteringAlgo").value === "HGC") {
-                        clusteringAlgo = 0;
-                    } else if (document.getElementById("clusteringAlgo").value === "I-KMeans") {
-                        clusteringAlgo = 1;
-                    } else if (document.getElementById("clusteringAlgo").value === "KMeans") {
-                        clusteringAlgo = 2;
-                    }
-                    return clusteringAlgo;
+                function updateStatsDetail(s1, s2, s3) {
+                    document.getElementById('repliesCnt').innerHTML = s1;
+                    document.getElementById('pointsCnt').innerHTML = s2;
+                    document.getElementById('clustersCnt').innerHTML = s3;
                 }
 
                 function updatePointsStats(json) {
-                    document.getElementById('repliesCnt').innerHTML = "Reply Tweets Count: " + json['repliesCnt'] + " / 15722639";
-                    document.getElementById('pointsCnt').innerHTML = "Points Count: " + json['pointsCnt'];
-                    document.getElementById('clustersCnt').innerHTML = "Clusters Count: " + json['clustersCnt'];
+                    let s1 = "Reply Tweets Count: " + json['repliesCnt'] + " / 15722639";
+                    let s2 = "Points Count: " + json['pointsCnt'];
+                    let s3 = "Clusters Count: " + json['clustersCnt'];
+                    updateStatsDetail(s1, s2, s3);
                 }
 
                 function updateEdgesStats(json) {
-                    document.getElementById('repliesCnt').innerHTML = "Reply Tweets Count: " + json['repliesCnt'] + " / 15722639";
-                    document.getElementById('edgesCnt').innerHTML = "Edges Count: " + json['edgesCnt'];
-                    document.getElementById('bundledEdgesCnt').innerHTML = "Bundled Edges Count: " + (json['edgesCnt'] - json['isolatedEdgesCnt']);
+                    let s1 = "Reply Tweets Count: " + json['repliesCnt'] + " / 15722639";
+                    let s2 = "Edges Count: " + json['edgesCnt'];
+                    let s3 = "Bundled Edges Count: " + (json['edgesCnt'] - json['isolatedEdgesCnt']);
+                    updateStatsDetail(s1, s2, s3);
                 }
 
                 function renderClusterPoints(minLng, minLat, maxLng, maxLat, zoom) {
-                    var clusteringAlgo = getClusteringAlgo();
-                    var clustering_control = 1;
                     if (socket === undefined) {
                         return;
                     }
-                    if (document.getElementById("cluster").checked === false) {
+                    const clusteringAlgorithm = getClusteringAlgorithm();
+                    let clustering_control = getChoice("cluster");
+                    if (clustering_control === 0) {
                         zoom = 18;
-                        clustering_control = 0;
                     }
                     const sendingObj = {
                         query: query,
@@ -304,7 +299,7 @@
                         upperLongitude: maxLng,
                         lowerLatitude: minLat,
                         upperLatitude: maxLat,
-                        clusteringAlgo: clusteringAlgo,
+                        clusteringAlgorithm: clusteringAlgorithm,
                         clustering: clustering_control,
                         zoom: zoom,
                         timestamp: current_timestamp,
@@ -336,7 +331,6 @@
                     map.addLayer(iconLayer);
                 }
 
-                var query = "";
 
                 function removeEdgeClusterLayer() {
                     if (map.getLayer('edgeCluster') !== undefined) {
@@ -351,13 +345,8 @@
                 }
 
                 function removeLayer() {
-                    if (map.getLayer('edgeCluster') !== undefined) {
-                        map.removeLayer('edgeCluster');
-                    }
-
-                    if (map.getLayer('cluster') !== undefined) {
-                        map.removeLayer('cluster');
-                    }
+                    removeEdgeClusterLayer();
+                    removeClusterLayer();
                 }
 
                 function drawGraph() {
@@ -368,9 +357,9 @@
 
                     socket.onopen = function (e) {
                         current_timestamp = Date.now();
-                        var clusteringAlgo = getClusteringAlgo();
+                        const clusteringAlgorithm = getClusteringAlgorithm();
                         const sendingObj = {
-                            query: query, clusteringAlgo: clusteringAlgo, timestamp: current_timestamp, option: 0
+                            query: query, clusteringAlgorithm: clusteringAlgorithm, timestamp: current_timestamp, option: 0
                         };
                         const sendingJSON = JSON.stringify(sendingObj);
                         socket.send(sendingJSON);
@@ -378,40 +367,32 @@
                     };
 
                     socket.onmessage = function (event) {
-                        var bounds = map.getBounds();
-                        var ne = bounds.getNorthEast();
-                        var sw = bounds.getSouthWest();
-                        var maxLng = ne.lng;
-                        var maxLat = ne.lat;
-                        var minLng = sw.lng;
-                        var minLat = sw.lat;
-                        var meta = event.data;
-                        var json = JSON.parse(meta);
-                        var option = json['option'];
-                        var timestamp = json['timestamp'];
+                        let status = getScreenStatus();
+                        let json = JSON.parse(event.data);
+                        let option = json['option'];
+                        let timestamp = json['timestamp'];
                         if (timestamp !== current_timestamp.toString()) {
                             console.log('data is dropped');
                             return;
                         }
                         if (option === 0) {
-                            var status = json['flag'];
-                            var date = json['date'];
-                            var clusteringAlgo = getClusteringAlgo();
-                            if (status !== 'Y') {
+                            let stopStatus = json['flag'];
+                            let date = json['date'];
+                            let clusteringAlgorithm = getClusteringAlgorithm();
+                            if (stopStatus !== 'Y') {
                                 const sendingObj = {
                                     query: query,
-                                    clusteringAlgo: clusteringAlgo,
+                                    clusteringAlgorithm: clusteringAlgorithm,
                                     date: date,
                                     timestamp: current_timestamp,
                                     option: 0
                                 };
                                 const sendingJSON = JSON.stringify(sendingObj);
-                                // console.log('sending: ' + sendingJSON);
                                 socket.send(sendingJSON);
                             }
-                            renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
-                            if (document.getElementById("checkbox").checked === true) {
-                                renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
+                            renderClusterPoints(status['minLng'], status['minLat'],status['maxLng'], status['maxLat'], status['currentZoom']);
+                            if (document.getElementById("edge").checked === true) {
+                                renderClusterEdges(status['minLng'], status['minLat'],status['maxLng'], status['maxLat'], status['currentZoom']);
                             }
                         } else if (option === 1) {
                             updatePointsStats(json);
@@ -429,91 +410,65 @@
                     }
                 }
 
-                function checkbox_change() {
-                    var bounds = map.getBounds();
-                    var ne = bounds.getNorthEast();
-                    var sw = bounds.getSouthWest();
-                    var maxLng = ne.lng;
-                    var maxLat = ne.lat;
-                    var minLng = sw.lng;
-                    var minLat = sw.lat;
-                    if (document.getElementById("checkbox").checked === true) {
-                        renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
+                function edge_change() {
+                    let status = getScreenStatus();
+                    if (document.getElementById("edge").checked === true) {
+                        renderClusterEdges(status['minLng'], status['minLat'],status['maxLng'], status['maxLat'], status['currentZoom']);
                     } else {
                         if (document.getElementById("bundle").checked === true) {
                             $('#bundle').prop('checked', false);
-                            $('#bundle').attr('checked', false);
                         }
                         removeEdgeClusterLayer();
                     }
                 }
 
                 function bundle_change() {
-                    var bounds = map.getBounds();
-                    var ne = bounds.getNorthEast();
-                    var sw = bounds.getSouthWest();
-                    var maxLng = ne.lng;
-                    var maxLat = ne.lat;
-                    var minLng = sw.lng;
-                    var minLat = sw.lat;
-                    if (document.getElementById("checkbox").checked === false) {
+                    let status = getScreenStatus();
+                    if (document.getElementById("edge").checked === false) {
                         $('#bundle').prop('checked', false);
-                        $('#bundle').attr('checked', false);
                         alert("Please check with edge.");
                         return;
                     }
                     if (document.getElementById("bundle").checked === true) {
-                        renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
+                        renderClusterEdges(status['minLng'], status['minLat'],status['maxLng'], status['maxLat'], status['currentZoom']);
                     } else {
-                        if (document.getElementById("checkbox").checked === false) {
+                        if (document.getElementById("edge").checked === false) {
                             removeEdgeClusterLayer();
                         } else {
-                            renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
+                            renderClusterEdges(status['minLng'], status['minLat'],status['maxLng'], status['maxLat'], status['currentZoom']);
                         }
                     }
                 }
 
                 function point_change() {
-                    var bounds = map.getBounds();
-                    var ne = bounds.getNorthEast();
-                    var sw = bounds.getSouthWest();
-                    var maxLng = ne.lng;
-                    var maxLat = ne.lat;
-                    var minLng = sw.lng;
-                    var minLat = sw.lat;
+                    let status = getScreenStatus();
                     if (document.getElementById("point").checked === true) {
-                        renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
+                        renderClusterPoints(status['minLng'], status['minLat'],status['maxLng'], status['maxLat'], status['currentZoom']);
                     } else {
                         removeClusterLayer();
-                        document.getElementById("cluster").checked = false;
+                        $('#cluster').prop('checked', false);
                     }
                 }
 
                 function cluster_change() {
-                    var bounds = map.getBounds();
-                    var ne = bounds.getNorthEast();
-                    var sw = bounds.getSouthWest();
-                    var maxLng = ne.lng;
-                    var maxLat = ne.lat;
-                    var minLng = sw.lng;
-                    var minLat = sw.lat;
+                    let status = getScreenStatus();
                     if (document.getElementById("cluster").checked === true) {
                         document.getElementById("point").checked = true;
                     } else {
                         removeClusterLayer();
                     }
                     if (document.getElementById("point").checked === true) {
-                        renderClusterPoints(minLng, minLat, maxLng, maxLat, zoomLevel);
+                        renderClusterPoints(status['minLng'], status['minLat'],status['maxLng'], status['maxLat'], status['currentZoom']);
                     }
-                    if (document.getElementById("checkbox").checked === true) {
-                        renderClusterEdges(minLng, minLat, maxLng, maxLat, zoomLevel);
+                    if (document.getElementById("edge").checked === true) {
+                        renderClusterEdges(status['minLng'], status['minLat'],status['maxLng'], status['maxLat'], status['currentZoom']);
                     }
                 }
 
                 // send heartbeat package to keep the connection alive
                 function keepAlive() {
                     // console.log("send heartbeat pack.");
-                    var timeout = 20000;
+                    const timeout = 20000;
                     if (socket.readyState === WebSocket.OPEN) {
                         socket.send('');
                     }
