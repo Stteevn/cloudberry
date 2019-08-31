@@ -24,7 +24,12 @@ public class IKmeans {
 
     public void setDataSet(List<double[]> dataSet) {
         this.dataSet = dataSet;
-        dataSetLength = dataSet.size();
+        if (dataSet == null || dataSet.size() == 0) {
+            System.out.println("No Data for this batch.");
+            dataSetLength = 0;
+        } else {
+            dataSetLength = dataSet.size();
+        }
     }
 
     public int getK() {
@@ -65,16 +70,18 @@ public class IKmeans {
      */
     public void init() {
         random = new Random();
-        dataSetLength = dataSet.size();
         if (k > dataSetLength) {
             k = dataSetLength;
+            kmeans.setK(dataSetLength);
         }
-        allCluster = new ArrayList<>();
-        for (int i = 0; i < k; i++) {
-            allCluster.add(new ArrayList<>());
+        if (dataSet != null && dataSet.size() != 0) {
+            allCluster = new ArrayList<>();
+            for (int i = 0; i < k; i++) {
+                allCluster.add(new ArrayList<>());
+            }
+            center = kmeans.initCenters(dataSetLength, dataSet, random);
+            cluster = kmeans.initCluster();
         }
-        center = kmeans.initCenters(dataSetLength, dataSet, random);
-        cluster = kmeans.initCluster();
     }
 
     /**
@@ -116,12 +123,32 @@ public class IKmeans {
     }
 
     /**
+     * Re-initialize the data structure when the latest batch size is no longer zero
+     */
+    private void reInit() {
+        k = dataSetLength;
+        kmeans.setK(dataSetLength);
+        allCluster = new ArrayList<>();
+        for (int i = 0; i < k; i++) {
+            allCluster.add(new ArrayList<>());
+        }
+        center = kmeans.initCenters(dataSetLength, dataSet, random);
+        cluster = kmeans.initCluster();
+    }
+
+    /**
      * load the new batch of data and do incremental K-Means
      *
      * @param data the new batch of data
      */
     public void execute(List<double[]> data) {
         setDataSet(data);
+        if (dataSet == null || dataSet.size() == 0) {
+            return;
+        }
+        if (k == 0 && dataSetLength > 0) {
+            reInit();
+        }
         clusterSet();
         setNewCenter();
         for (int j = 0; j < getK(); j++) {

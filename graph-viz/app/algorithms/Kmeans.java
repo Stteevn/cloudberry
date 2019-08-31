@@ -40,8 +40,19 @@ public class Kmeans {
         return k;
     }
 
+    public void setK(int k) {
+        this.k = k;
+    }
+
     public void setDataSet(List<double[]> dataSet) {
         this.dataSet = dataSet;
+        if (dataSet == null || dataSet.size() == 0) {
+            System.out.println("No data for this batch.");
+            dataSetLength = 0;
+        }
+        else {
+            dataSetLength = dataSet.size();
+        }
     }
 
     public List<List<double[]>> getCluster() {
@@ -66,10 +77,12 @@ public class Kmeans {
     private void init() {
         m = 0;
         random = new Random();
-        if (dataSet == null || dataSet.size() == 0) {
-            System.err.println("Dataset missing.");
+        if (k > dataSetLength) {
+            k = dataSetLength;
         }
-        dataSetLength = dataSet.size();
+        if (dataSet == null || dataSet.size() == 0) {
+            return;
+        }
         center = initCenters(dataSetLength, dataSet, random);
         cluster = initCluster();
         squaredErrorSums = new ArrayList<>();
@@ -242,6 +255,9 @@ public class Kmeans {
     public void execute(List<double[]> dataSet) {
         setDataSet(dataSet);
         init();
+        if (dataSet == null || dataSet.size() == 0) {
+            return;
+        }
         // iterate until no change in the sum of squared errors
         while (true) {
             clusterSet();
