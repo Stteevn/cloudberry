@@ -3,7 +3,7 @@ package models;
 import java.util.ArrayList;
 
 public class Path {
-
+    // TODO rename alv
     private ArrayList<Point> alv;
 
     public Path() {

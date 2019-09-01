@@ -5,7 +5,7 @@ import algorithms.PointCluster;
 import java.util.Comparator;
 
 public class Cluster implements Comparable<Cluster> {
-
+    // TODO don't use zoom in Kmeans class, in Kmeans, just use this class
     /**
      * Compares two points by x-coordinate.
      */
@@ -15,7 +15,7 @@ public class Cluster implements Comparable<Cluster> {
      * Compares two points by y-coordinate.
      */
     public static final Comparator<Cluster> Y_ORDER = new YOrder();
-
+    //TODO using Point class
     private double x;    // x coordinate
     private double y;    // y coordinate
     private int numPoints = 0;

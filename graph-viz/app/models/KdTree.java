@@ -103,6 +103,7 @@ public class KdTree {
             } else {
                 comparator = Cluster.Y_ORDER;
             }
+            // TODO create a new method split
             // go to the left if point left to vertical point or below a horizontal point
             if (comparator.compare(p, n.getPoint()) < 0) {
                 // if the left point is null then create new node and set it

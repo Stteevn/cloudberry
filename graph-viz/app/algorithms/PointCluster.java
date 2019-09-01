@@ -6,11 +6,15 @@ import models.Rectangle;
 
 import java.util.ArrayList;
 
+// TODO try thinking about adding the degree into the cluster which would help in the tree cut
+// TODO try to make the cluster not imaginary to make the incremental bundling easier
 public class PointCluster {
 
     private int minZoom;
     private int maxZoom;
+    // TODO understand radius
     private double radius = 80;
+    // TODO explain and add comment for extent
     private double extent = 512;
     private KdTree[] trees;
 

@@ -10,7 +10,10 @@ import java.util.ArrayList;
  * Force Directed Edge Bundling Algorithm.
  */
 public class ForceBundling {
-
+    /** TODO replace EdgeVector to be Edge, and
+     * use the point from edge class to get the position
+     * from point data structure.
+     */
     // All the data nodes
     private ArrayList<Point> dataNodes;
     // All the data edges
@@ -160,17 +163,18 @@ public class ForceBundling {
     /**
      * Apply the spring force within nodes in the same edge.
      * @param e_ind the index of the edge.
-     * @param i the index of the node within the edge.
+     * @param cp_ind the index of the control points within the edge.
+     // TODO read what kp means from paper
      * @param kP parameter for calculation.
      * @return force vector.
      */
-    private Point applySpringForce(int e_ind, int i, double kP) {
+    private Point applySpringForce(int e_ind, int cp_ind, double kP) {
         if (subdivisionPoints.get(e_ind).getAlv().size() <= 2) {
             return new Point(0, 0);
         }
-        Point prev = subdivisionPoints.get(e_ind).getAlv().get(i - 1);
-        Point next = subdivisionPoints.get(e_ind).getAlv().get(i + 1);
-        Point crnt = subdivisionPoints.get(e_ind).getAlv().get(i);
+        Point prev = subdivisionPoints.get(e_ind).getAlv().get(cp_ind - 1);
+        Point next = subdivisionPoints.get(e_ind).getAlv().get(cp_ind + 1);
+        Point crnt = subdivisionPoints.get(e_ind).getAlv().get(cp_ind);
         double x = prev.getX() - crnt.getX() + next.getX() - crnt.getX();
         double y = prev.getY() - crnt.getY() + next.getY() - crnt.getY();
         x *= kP;
@@ -241,6 +245,7 @@ public class ForceBundling {
                 double currentSegmentLength = segmentLength;
                 ArrayList<Point> newDivisionPoints = new ArrayList<>();
                 newDivisionPoints.add(dataNodes.get(dataEdges.get(e_ind).getSourceNodeInd()));
+                // TODO revise the meaning they are iteratively dividing the edges again
                 for (int i = 1; i < subdivisionPoints.get(e_ind).getAlv().size(); i++) {
                     double oldSegmentLength = euclideanDistance(subdivisionPoints.get(e_ind).getAlv().get(i), subdivisionPoints.get(e_ind).getAlv().get(i - 1));
                     while (oldSegmentLength > currentSegmentLength) {
@@ -356,6 +361,7 @@ public class ForceBundling {
      */
     private void computeCompatibilityLists() {
         for (int e = 0; e < dataEdges.size() - 1; e++) {
+            // TODO compare based on some other metrics
             for (int oe = e + 1; oe < dataEdges.size(); oe++) {
                 if (areCompatible(dataEdges.get(e), dataEdges.get(oe))) {
                     compatibilityList.get(e).add(oe);

@@ -10,6 +10,7 @@ import java.util.Random;
 /**
  * Incremental K-Means Algorithm
  */
+// TODO extend Kmeans
 public class IKmeans {
     private Kmeans kmeans;
     private int k; // the number of clusters desired
@@ -141,6 +142,7 @@ public class IKmeans {
      *
      * @param data the new batch of data
      */
+    // TODO call init instead of reinit
     public void execute(List<double[]> data) {
         setDataSet(data);
         if (dataSet == null || dataSet.size() == 0) {

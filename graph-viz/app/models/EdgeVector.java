@@ -11,6 +11,7 @@ public class EdgeVector {
         return targetNodeInd;
     }
 
+    // TODO might merge this class with edge class
     private int sourceNodeInd;
     private int targetNodeInd;
 

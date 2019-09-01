@@ -2,6 +2,7 @@ package models;
 
 import java.util.Objects;
 
+// TODO change longitude and latitude EVERYWHERE to be x and y
 public class Edge {
     private double fromLatitude;
     private double fromLongitude;

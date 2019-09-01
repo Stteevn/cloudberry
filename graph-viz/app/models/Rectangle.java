@@ -39,6 +39,7 @@ public class Rectangle {
     }
 
     // does this axis-aligned rectangle intersect that one?
+    // TODO delete intersects
     public boolean intersects(Rectangle that) {
         return this.xmax >= that.xmin && this.ymax >= that.ymin
                 && that.xmax >= this.xmin && that.ymax >= this.ymin;

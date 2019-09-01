@@ -11,12 +11,19 @@ import java.util.*;
  */
 public class Kmeans {
     private int k; // the number of clusters desired
+    // TODO change m to I
     private int m; // the number of iterations
+    // TODO remove datasetlength
     private int dataSetLength; // the number of points in the dataset
+    // TODO use the dataset from Point class
     private List<double[]> dataSet; // the dataset for clustering
+    // TODO add "s"
     private ArrayList<double[]> center; // the list of centers of clusters
+    // TODO use list of cluster class
     private List<List<double[]>> cluster; // the list of clusters for the whole dataset
+    // TODO change arraylist to a double value
     private ArrayList<Double> squaredErrorSums; // the sum of squared errors
+    // TODO remove random
     private Random random;
     private HashMap<Point, Integer> parents = new HashMap<>(); // map of points and its cluster
 
@@ -32,6 +39,7 @@ public class Kmeans {
         return center;
     }
 
+    // TODO return the datasetlength, when dataset is null, return 0
     public int getDataSetLength() {
         return dataSetLength;
     }
@@ -55,10 +63,12 @@ public class Kmeans {
         }
     }
 
+    // TODO add an "s"
     public List<List<double[]>> getCluster() {
         return cluster;
     }
 
+    // TODO move the constructor up
     /**
      * Constructor for k
      *
@@ -159,6 +169,7 @@ public class Kmeans {
      * @param distance distance array
      * @return the index of the closest center in the distance array
      */
+    // TODO choose the first point instead of a random one
     int minDistance(double[] distance, Random random) {
         double minDistance = distance[0];
         int minLocation = 0;
@@ -166,7 +177,7 @@ public class Kmeans {
             if (distance[i] < minDistance) {
                 minDistance = distance[i];
                 minLocation = i;
-            } else if (distance[i] == minDistance) // 如果相等，随机返回一个位置
+            } else if (distance[i] == minDistance)
             {
                 if (random.nextInt(10) < 5) {
                     minLocation = i;
@@ -179,6 +190,7 @@ public class Kmeans {
     /**
      * Add each point to its closest cluster
      */
+    // TODO change the distance array to a single value
     private void clusterSet() {
         double[] distance = new double[k];
         for (int i = 0; i < dataSetLength; i++) {
@@ -209,6 +221,7 @@ public class Kmeans {
      * @param center  centers of clusters
      * @return the computed squared error
      */
+    // TODO change it to the square of distance
     private double errorSquare(double[] element, double[] center) {
         double x = element[0] - center[0];
         double y = element[1] - center[1];

@@ -12,6 +12,7 @@ import javax.inject.Inject;
 /**
  * This class works as the controller of the WebSocket.
  */
+// TODO rename the class and the methods
 public class EdgeController extends Controller {
 
     private final ActorSystem actorSystem;
